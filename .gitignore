@@ -1,0 +1,80 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+.npm/
+.yarn/
+vendor/
+
+# Production Builds
+dist/
+build/
+out/
+.next/
+*.tsbuildinfo
+
+# Python & AI/ML
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+ENV/
+.pytest_cache/
+.coverage
+htmlcov/
+*.pt
+*.onnx
+*.bin
+
+# Environment Variables & Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+*.crt
+id_rsa
+id_rsa.pub
+
+# Local Storage, Databases & Containers
+postgres-data/
+redis-data/
+minio-data/
+*.sqlite
+*.sqlite3
+*.db
+*.log
+logs/
+*.pid
+*.seed
+
+# System & OS Files
+.DS_Store
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# IDE & Editor Directories
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.fleet/
+
+# Testing & Coverage
+coverage/
+.nyc_output/
+cypress/videos/
+cypress/screenshots/
+playwright-report/
+test-results/
+
+# Internal Management & Private Lead Reference (Kept local only)
+TEAM_LEAD_GUIDE.md
+internal/
+private/
+notes/
+lead-notes.md
