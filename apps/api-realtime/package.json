@@ -1,0 +1,32 @@
+{
+  "name": "@sda/api-realtime",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "nest build",
+    "start": "nest start",
+    "dev": "nest start --watch",
+    "start:prod": "node dist/main",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@nestjs/common": "^10.3.8",
+    "@nestjs/config": "^3.2.2",
+    "@nestjs/core": "^10.3.8",
+    "@nestjs/platform-socket.io": "^10.3.8",
+    "@nestjs/websockets": "^10.3.8",
+    "@prisma/client": "^5.14.0",
+    "@sda/common-types": "*",
+    "@sda/database": "*",
+    "jsonwebtoken": "^9.0.2",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "socket.io": "^4.7.5"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^10.3.2",
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/node": "^20.12.12",
+    "typescript": "^5.4.5"
+  }
+}

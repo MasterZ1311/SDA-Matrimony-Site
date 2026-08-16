@@ -1,0 +1,350 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum UserRole {
+  GUEST
+  MEMBER
+  VERIFIED_MEMBER
+  PASTOR_VERIFIER
+  ADMIN
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum MaritalStatus {
+  NEVER_MARRIED
+  WIDOWED
+  DIVORCED_ANNULLED
+}
+
+enum BaptismStatus {
+  BAPTIZED_SDA
+  PLANNING_BAPTISM
+  ATTENDING_NON_MEMBER
+}
+
+enum SabbathObservance {
+  STRICT_SUNSET_TO_SUNSET
+  MODERATE
+  LEARNING
+}
+
+enum DietType {
+  STRICT_VEGAN
+  LACTO_OVO_VEGETARIAN
+  PESCATARIAN
+  NON_VEGETARIAN_CLEAN_ONLY
+}
+
+enum AlcoholTobaccoStance {
+  STRICT_ABSTINENCE
+  NEVER_USED
+  OCCASIONAL
+  PAST_USE_QUIT
+}
+
+enum PhotoPrivacy {
+  PUBLIC_TO_ALL
+  VERIFIED_MEMBERS_ONLY
+  REQUEST_APPROVAL_ONLY
+}
+
+enum InterestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  CANCELLED
+  BLOCKED
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  SUBMITTED_PENDING_PASTOR
+  PASTOR_ENDORSED
+  ADMIN_APPROVED
+  REJECTED
+}
+
+enum EducationLevel {
+  HIGH_SCHOOL
+  DIPLOMA
+  BACHELORS
+  MASTERS
+  DOCTORATE
+  OTHER
+}
+
+enum RelocationPreference {
+  WILLING_TO_RELOCATE_ANYWHERE
+  WITHIN_COUNTRY
+  WITHIN_DIVISION
+  NOT_WILLING_TO_RELOCATE
+}
+
+model User {
+  id                    String    @id @default(uuid())
+  email                 String    @unique
+  passwordHash          String
+  role                  UserRole  @default(MEMBER)
+  isEmailVerified       Boolean   @default(false)
+  emailVerifyToken      String?
+  passwordResetToken    String?
+  passwordResetExpires  DateTime?
+  lastLoginAt           DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  profile               Profile?
+  sentInterests         InterestRequest[]     @relation("SentInterests")
+  receivedInterests     InterestRequest[]     @relation("ReceivedInterests")
+  conversationsAsUser1  Conversation[]        @relation("User1Conversations")
+  conversationsAsUser2  Conversation[]        @relation("User2Conversations")
+  chatMessages          ChatMessage[]
+  pastoralVerifications PastoralVerification[]
+
+  @@index([email])
+  @@index([role])
+}
+
+model Profile {
+  id                  String             @id @default(uuid())
+  userId              String             @unique
+  user                User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstName           String
+  lastName            String
+  gender              Gender
+  dateOfBirth         DateTime
+  heightCm            Int?
+  maritalStatus       MaritalStatus      @default(NEVER_MARRIED)
+  hasChildren         Boolean            @default(false)
+  citizenship         String             @default("United States")
+  residenceCountry    String             @default("United States")
+  residenceState      String?
+  residenceCity       String             @default("Silver Spring")
+  bioSummary          String?            @db.Text
+  partnerExpectations String?            @db.Text
+  verificationStatus  VerificationStatus @default(UNVERIFIED)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  spiritualProfile    SpiritualProfile?
+  lifestyleProfile    LifestyleProfile?
+  educationCareer     EducationCareer?
+  familyBackground    FamilyBackground?
+  photos              Photo[]
+
+  @@index([gender, verificationStatus])
+  @@index([residenceCountry, residenceCity])
+}
+
+model SpiritualProfile {
+  id                          String             @id @default(uuid())
+  profileId                   String             @unique
+  profile                     Profile            @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  
+  divisionId                  String?
+  division                    ChurchDivision?    @relation(fields: [divisionId], references: [id])
+  unionId                     String?
+  union                       ChurchUnion?       @relation(fields: [unionId], references: [id])
+  conferenceId                String?
+  conference                  ChurchConference?  @relation(fields: [conferenceId], references: [id])
+  localChurchId               String?
+  localChurch                 LocalChurch?       @relation(fields: [localChurchId], references: [id])
+  localChurchCustomName       String?
+  
+  baptismStatus               BaptismStatus      @default(BAPTIZED_SDA)
+  baptismYear                 Int?
+  sabbathObservance           SabbathObservance  @default(STRICT_SUNSET_TO_SUNSET)
+  ministries                  String[]           @default([])
+  favoriteBibleVerse          String?
+  spiritOfProphecyPerspective String?            @db.Text
+
+  createdAt                   DateTime           @default(now())
+  updatedAt                   DateTime           @updatedAt
+
+  @@index([baptismStatus, sabbathObservance])
+  @@index([divisionId, conferenceId])
+}
+
+model LifestyleProfile {
+  id               String               @id @default(uuid())
+  profileId        String               @unique
+  profile          Profile              @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  
+  diet             DietType             @default(LACTO_OVO_VEGETARIAN)
+  alcoholTobacco   AlcoholTobaccoStance @default(STRICT_ABSTINENCE)
+  musicPreferences String[]             @default([])
+  hobbies          String[]             @default([])
+  modestyValues    String?              @db.Text
+
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  @@index([diet, alcoholTobacco])
+}
+
+model EducationCareer {
+  id                   String               @id @default(uuid())
+  profileId            String               @unique
+  profile              Profile              @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  
+  highestEducation     EducationLevel       @default(BACHELORS)
+  fieldOfStudy         String?
+  institution          String?
+  occupation           String               @default("Professional")
+  employerOrBusiness   String?
+  annualIncomeRange    String?
+  relocationPreference RelocationPreference @default(WILLING_TO_RELOCATE_ANYWHERE)
+
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  @@index([highestEducation, occupation])
+}
+
+model FamilyBackground {
+  id                 String   @id @default(uuid())
+  profileId          String   @unique
+  profile            Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  
+  fatherOccupation   String?
+  motherOccupation   String?
+  siblingsCount      Int?     @default(0)
+  familyValues       String?  @db.Text
+  isAdventistFamily  Boolean  @default(true)
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model Photo {
+  id           String       @id @default(uuid())
+  profileId    String
+  profile      Profile      @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  url          String
+  thumbnailUrl String?
+  isPrimary    Boolean      @default(false)
+  privacy      PhotoPrivacy @default(PUBLIC_TO_ALL)
+  isApproved   Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+
+  @@index([profileId, isPrimary])
+}
+
+model ChurchDivision {
+  id          String             @id @default(uuid())
+  name        String
+  code        String             @unique
+  region      String
+  unions      ChurchUnion[]
+  spirituals  SpiritualProfile[]
+}
+
+model ChurchUnion {
+  id          String             @id @default(uuid())
+  divisionId  String
+  division    ChurchDivision     @relation(fields: [divisionId], references: [id], onDelete: Cascade)
+  name        String
+  country     String
+  conferences ChurchConference[]
+  spirituals  SpiritualProfile[]
+
+  @@index([divisionId])
+}
+
+model ChurchConference {
+  id              String             @id @default(uuid())
+  unionId         String
+  union           ChurchUnion        @relation(fields: [unionId], references: [id], onDelete: Cascade)
+  name            String
+  stateOrProvince String
+  localChurches   LocalChurch[]
+  spirituals      SpiritualProfile[]
+
+  @@index([unionId])
+}
+
+model LocalChurch {
+  id           String             @id @default(uuid())
+  conferenceId String
+  conference   ChurchConference   @relation(fields: [conferenceId], references: [id], onDelete: Cascade)
+  name         String
+  city         String
+  address      String?
+  spirituals   SpiritualProfile[]
+
+  @@index([conferenceId])
+}
+
+model InterestRequest {
+  id           String         @id @default(uuid())
+  senderId     String
+  sender       User           @relation("SentInterests", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId   String
+  receiver     User           @relation("ReceivedInterests", fields: [receiverId], references: [id], onDelete: Cascade)
+  status       InterestStatus @default(PENDING)
+  introMessage String?        @db.Text
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@unique([senderId, receiverId])
+  @@index([receiverId, status])
+}
+
+model Conversation {
+  id        String        @id @default(uuid())
+  user1Id   String
+  user1     User          @relation("User1Conversations", fields: [user1Id], references: [id], onDelete: Cascade)
+  user2Id   String
+  user2     User          @relation("User2Conversations", fields: [user2Id], references: [id], onDelete: Cascade)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  messages  ChatMessage[]
+
+  @@unique([user1Id, user2Id])
+  @@index([user1Id, user2Id])
+}
+
+model ChatMessage {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  content        String       @db.Text
+  isRead         Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+model PastoralVerification {
+  id                String             @id @default(uuid())
+  userId            String
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pastorName        String
+  pastorEmail       String
+  pastorPhone       String?
+  churchName        String
+  conferenceName    String
+  referenceNotes    String?            @db.Text
+  status            VerificationStatus @default(SUBMITTED_PENDING_PASTOR)
+  verificationToken String?            @unique
+  pastorComments    String?            @db.Text
+  verifiedAt        DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([userId, status])
+  @@index([verificationToken])
+}

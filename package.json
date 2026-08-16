@@ -1,0 +1,41 @@
+{
+  "name": "sda-matrimony-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Enterprise-grade, faith-aligned digital matchmaking ecosystem for the Seventh-day Adventist community.",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces --if-present",
+    "dev:web": "npm run dev --workspace=@sda/web",
+    "dev:api-core": "npm run dev --workspace=@sda/api-core",
+    "dev:api-realtime": "npm run dev --workspace=@sda/api-realtime",
+    "dev:ai": "cd apps/ai-engine && uvicorn app.main:app --reload --port 8000",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "db:generate": "npm run generate --workspace=@sda/database",
+    "db:migrate": "npm run migrate --workspace=@sda/database",
+    "db:seed": "npm run seed --workspace=@sda/database",
+    "db:studio": "npm run studio --workspace=@sda/database",
+    "docker:up": "docker compose -f infrastructure/docker/docker-compose.dev.yml up -d",
+    "docker:down": "docker compose -f infrastructure/docker/docker-compose.dev.yml down"
+  },
+  "keywords": [
+    "seventh-day-adventist",
+    "sda",
+    "matrimony",
+    "matchmaking",
+    "faith-based",
+    "nextjs",
+    "nestjs",
+    "fastapi"
+  ],
+  "author": "SDA Matrimony Engineering Team",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}
