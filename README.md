@@ -1,47 +1,35 @@
 # Seventh-day Adventist (SDA) Matrimony Platform
 
-## 1. Executive Summary
-
-The Seventh-day Adventist (SDA) Matrimony Platform is an enterprise-grade, faith-aligned digital matchmaking ecosystem designed specifically for the global Seventh-day Adventist community. The platform prioritizes spiritual compatibility, Adventist lifestyle alignment (including Sabbath observance, dietary standards, and church involvement), robust verification mechanisms (such as pastoral verification), and data privacy.
-
-This repository serves as the central hub for the engineering team, detailing system architecture, domain specifications, technology stack decisions, development workflows, and team responsibilities.
-
----
-
-## 2. Platform Domain Specifications
-
-The platform addresses unique lifestyle, doctrinal, and cultural factors intrinsic to the SDA community:
-
-### 2.1 Faith and Spiritual Profile
-* **Church Structure & Membership**: Categorization by Division, Union, Conference/Mission, and Local Congregation.
-* **Baptism Status**: Verification of baptism by immersion in the SDA Church.
-* **Sabbath Observance**: Personal commitment to Sabbath keeping (Friday sunset to Saturday sunset).
-* **Ministry & Leadership**: Engagement in church departments (Pathfinders, Adventurers, Sabbath School, Adventist Youth, Music/Choir, Deaconry, Eldership, Medical Missionary work).
-* **Doctrinal Alignment**: Spirit of Prophecy perspectives, Biblical creation worldview, and core fundamental beliefs.
-
-### 2.2 Lifestyle and Health Message
-* **Dietary Preferences**: Strict Vegan, Lacto-Ovo Vegetarian, Pescatarian, or Non-Vegetarian.
-* **Health Commitments**: Strict abstinence from alcohol, tobacco, narcotics, and unclean foods (Levitical dietary principles).
-* **Recreation & Modesty**: Entertainment, musical preferences (Sacred, Classical, Contemporary Christian), and dress modesty values.
-
-### 2.3 Verification, Safety, and Privacy
-* **Pastoral Verification**: Optional verification endorsement by a local church pastor or head elder.
-* **Identity Verification**: Secure government ID verification via automated optical character recognition and face matching.
-* **Granular Privacy Controls**:
-  * Photo privacy modes (visible to all, visible only to verified users, or visible upon approved request).
-  * Contact information disclosure only upon mutual consent.
-  * Anti-screenshot, anti-scraping, and watermark protections.
-
-### 2.4 Matrimonial Matching Workflows
-* **Compatibility Scoring**: Multi-factor scoring weighting faith, lifestyle, education, location, and relocation readiness.
-* **Express Interest System**: Send Request -> Receive Acceptance -> Exchange Messages -> Request Contact Details.
-* **Biodata Generation**: Automated generation of standardized, printable PDF biodata for family and pastoral review.
+- **Architect & Lead Developer**: MasterZ1311
+- **GitHub Profile**: [https://github.com/MasterZ1311](https://github.com/MasterZ1311)
+- **Repository**: [https://github.com/MasterZ1311/SDA-Matrimony-Site](https://github.com/MasterZ1311/SDA-Matrimony-Site)
+- **Branch**: [MasterZ-FullVersion](https://github.com/MasterZ1311/SDA-Matrimony-Site/tree/MasterZ-FullVersion)
 
 ---
 
-## 3. Technology Stack Architecture
+## 1. Executive Summary and Author Statement
 
-The technical architecture is designed for high availability, security, strict data protection, and low-latency real-time operations.
+As the sole architect and developer of this platform, I engineered the Seventh-day Adventist (SDA) Matrimony Platform to address the nuanced spiritual, lifestyle, and community-trust requirements of the global Seventh-day Adventist denomination.
+
+Traditional matrimonial platforms operate on generic demographic parameters that fail to capture Adventist core values, including Sabbath observance, baptismal commitment, Adventist health and dietary standards, local church and conference governance, and verified pastoral endorsements. This platform was designed from the ground up to establish a trusted, secure, and modern digital ecosystem for Adventist individuals seeking spiritually aligned marriage.
+
+The system is engineered as a production-ready, full-stack monorepo featuring a Next.js 14 web client, a high-throughput NestJS REST API, a distributed Socket.io real-time gateway, a Python FastAPI AI and moderation microservice, and a PostgreSQL database powered by Prisma and `pgvector`.
+
+---
+
+## 2. Technical Documentation Index
+
+For in-depth architectural breakdowns, setup procedures, and deployment guides, refer to the dedicated documentation files:
+
+- **[System Architecture (docs/ARCHITECTURE.md)](file:///e:/Github/Matrimony%20Project/docs/ARCHITECTURE.md)**: Deep dive into microservice boundaries, data flow lifecycles, database entity relationships, and type-safety mechanisms.
+- **[Technology Stack Specifications (docs/TECH_STACK.md)](file:///e:/Github/Matrimony%20Project/docs/TECH_STACK.md)**: Exhaustive breakdown of frameworks, libraries, database engines, caching layers, and tooling across the entire monorepo.
+- **[Platform Features and Domain Specs (docs/FEATURES.md)](file:///e:/Github/Matrimony%20Project/docs/FEATURES.md)**: Comprehensive catalog of faith profiling, church hierarchy integration, pastoral verification, AI matching, and privacy controls.
+- **[Local Development and Onboarding Guide (docs/GETTING_STARTED.md)](file:///e:/Github/Matrimony%20Project/docs/GETTING_STARTED.md)**: Step-by-step instructions for configuring local environments, running Docker infrastructure, applying migrations, seeding data, and executing services.
+- **[Production Readiness and Deployment Guide (docs/PRODUCTION_READINESS.md)](file:///e:/Github/Matrimony%20Project/docs/PRODUCTION_READINESS.md)**: Enterprise deployment standards, containerization, Kubernetes topologies, security hardening, database clustering, and observability.
+
+---
+
+## 3. High-Level System Architecture
 
 ```
                                   +-----------------------+
@@ -70,192 +58,121 @@ The technical architecture is designed for high availability, security, strict d
     v              v              v                       v              v              v
 +-------+      +-------+      +-------+               +-------+      +-------+      +-------+
 |  Post |      | Redis |      | S3 /  |               | AI/ML |      | Worker|      | Audit |
-| greSQL|      | Cache |      | R2    |               | Vector|      | Queue |      | Logs  |
+| greSQL|      | Cache |      | MinIO |               | Vector|      | Queue |      | Logs  |
 | /pgvec|      | /Queue|      | Media |               | Engine|      | (Bull)|      |       |
 +-------+      +-------+      +-------+               +-------+      +-------+      +-------+
 ```
 
-### 3.1 Frontend Tier
-* **Framework**: Next.js (React with App Router) and TypeScript.
-* **Styling**: Modern CSS / Vanilla CSS Modules with a custom responsive design system.
-* **State Management**: TanStack Query (React Query) for asynchronous server state, Zustand for client state.
-* **Real-time Client**: Socket.io-client for chat, match notifications, and status presence.
-* **Form & Validation**: React Hook Form with Zod schemas for end-to-end type safety.
-* **PDF Engine**: `@react-pdf/renderer` or server-side Puppeteer for SDA Biodata generation.
-
-### 3.2 Backend Tier
-* **Core API Framework**: NestJS (TypeScript) with Fastify adapter for enterprise modularity, dependency injection, and high throughput.
-* **API Paradigm**: RESTful endpoints with OpenAPI/Swagger documentation, supplemented by GraphQL for complex profile querying.
-* **Real-time Communication**: WebSockets via Socket.io with Redis Adapter for cluster support.
-* **Authentication**: OAuth2 / JWT (Access & Refresh token rotation), bcrypt password hashing, and Multi-Factor Authentication (TOTP / SMS OTP).
-* **Task Queues**: BullMQ with Redis for background jobs (emails, SMS, PDF generation, notification delivery).
-
-### 3.3 AI and Machine Learning Tier
-* **Engine Framework**: Python (FastAPI microservice).
-* **Compatibility Engine**: Hybrid matching combining rule-based constraint filtering (SDA doctrinal redlines) and dense vector embeddings (using Sentence Transformers / text-embedding-3-small).
-* **Vector Search**: PostgreSQL with `pgvector` extension for efficient vector similarity queries (Cosine/Dot Product).
-* **Computer Vision Moderation**:
-  * Automated face detection and image moderation for profile photos.
-  * Real-time watermarking and selective blurring for photo privacy tiers.
-* **NLP & Text Moderation**: Real-time screening for toxic content, harassment, phone number/external link leakage prior to mutual consent.
-
-### 3.4 Database and Storage Tier
-* **Primary Database**: PostgreSQL 16 (Relational integrity, ACID transactions, complex relations).
-* **Vector Storage**: PostgreSQL `pgvector` for embedding storage and similarity indexing.
-* **In-Memory Store**: Redis 7 (Caching, session store, rate limiting, and real-time Pub/Sub).
-* **Object Storage**: AWS S3 or Cloudflare R2 (Encrypted at rest, pre-signed URLs for media upload/download).
-
-### 3.5 DevOps, Infrastructure, and Observability
-* **Containerization**: Docker with multi-stage production builds.
-* **Orchestration**: Docker Compose for local development; Kubernetes (EKS/GKE) or AWS ECS for production.
-* **CI/CD**: GitHub Actions workflows for automated linting, unit/integration testing, security scanning, and deployment.
-* **Reverse Proxy & Security**: NGINX / Cloudflare with WAF, TLS 1.3, DDoS protection, and automated SSL termination.
-* **Observability**: Prometheus & Grafana for infrastructure metrics, Sentry for real-time exception tracking, Winston/Pino for structured JSON logging.
-
 ---
 
-## 4. Engineering Team Structure and Responsibilities
+## 4. Repository Structure
 
-The project is driven by a 5-member cross-functional engineering team.
-
-| Role | Primary Ownership | Core Deliverables |
-| :--- | :--- | :--- |
-| **Frontend Developer** | Client Web Application | Next.js App Router, responsive UI design system, state management, form validations, WebSocket chat client, biodata viewer. |
-| **Backend Developer 1** | Core Business Logic & Auth | User authentication, RBAC, SDA profile management, church directory integration, pastoral verification flow, payment gateway integration. |
-| **Backend Developer 2** | Real-time Services & Match Engine | WebSocket messaging, notifications engine, search/filter pipeline, media processing, background job workers, API gateway integration. |
-| **AI/ML Engineer** | Matching Algorithm & Moderation | Faith-based compatibility scoring engine, vector embedding generation, profile photo moderation, safety NLP filters, recommendation API. |
-| **DevOps & Database Engineer** | Infrastructure, DB & Security | PostgreSQL database design & migrations, Redis setup, Docker containers, CI/CD pipelines, security hardening, monitoring, backups. |
-
----
-
-## 5. Development Resources and References
-
-### 5.1 Architectural and Functional Reference Repositories
-Team members should review the following public repositories for structural and domain inspiration:
-* **Metro Bond Client**: `https://github.com/Alifa-AS/Metro-bond-client` - Reference for matrimonial user interfaces, dashboard management, and member profile presentation.
-* **Simple Matrimonial Website**: `https://github.com/jagadish-7/Simple-Matrimonial-Website` - Reference for matrimonial database relationships and search filtering parameters.
-* **Complete Dating App**: `https://github.com/helloharendra/Complete-Dating-App` - Reference for real-time chat architecture, presence detection, and push notifications.
-
-### 5.2 Mandatory Engineering Best Practices and Initiation References
-All team members are required to review the following repositories to understand project workflows, modular development, and automated engineering skills:
-* **Skills Bot Framework**: `https://github.com/MasterZ1311/Skills-Bot-V.-MZ.0-` - Study for prompt engineering, task decomposition, and modular development automation.
-* **Hackathon Initiation & Execution Standard**: `https://github.com/MasterZ1311/Hackathon-Initiation-SIH` - Study for rapid development sprints, milestone tracking, and production delivery standards.
-
----
-
-## 6. Repository Layout
+The monorepo structure is organized into discrete applications and shared packages:
 
 ```
 .
 ├── apps/
-│   ├── web/                     # Next.js Frontend Application
-│   ├── api-core/                # NestJS Backend API (Auth, Profiles, Business Logic)
-│   ├── api-realtime/            # Real-time WebSockets & Notifications Service
+│   ├── web/                     # Next.js 14 Web Application (App Router, Zustand, React Query)
+│   ├── api-core/                # NestJS REST API (Auth, Profiles, Church, Verification, Biodata)
+│   ├── api-realtime/            # NestJS WebSocket Gateway (Socket.io, Redis Adapter)
 │   └── ai-engine/               # Python FastAPI Microservice (Compatibility & Moderation)
 ├── packages/
-│   ├── database/                # Prisma/TypeORM schema, migrations, and seeders
-│   ├── common-types/            # Shared TypeScript interfaces and DTOs
-│   ├── eslint-config/           # Shared linting configuration
-│   └── tsconfig/                # Base TypeScript configurations
+│   ├── database/                # Prisma ORM schema, PostgreSQL migrations, and database seeds
+│   └── common-types/            # Shared TypeScript interfaces, DTOs, and domain enums
+├── docs/
+│   ├── ARCHITECTURE.md          # System design, data flows, and schema relationships
+│   ├── TECH_STACK.md            # Detailed technology stack and dependency analysis
+│   ├── FEATURES.md              # Domain specifications and feature catalog
+│   ├── GETTING_STARTED.md       # Developer onboarding and local execution guide
+│   └── PRODUCTION_READINESS.md  # Production hardening, deployment, and security checklist
 ├── infrastructure/
-│   ├── docker/                  # Dockerfiles and docker-compose configurations
-│   ├── k8s/                     # Kubernetes manifests (production deployment)
-│   ├── nginx/                   # Reverse proxy configuration
-│   └── scripts/                 # Database backup, seed, and deployment scripts
-├── .github/
-│   └── workflows/               # CI/CD pipelines (test, lint, security, deploy)
-├── MVP.md                       # Phase 1 Minimum Viable Product Execution Plan
-└── README.md                    # Main platform documentation
+│   └── docker/                  # Docker Compose definitions (PostgreSQL, Redis, MinIO)
+├── MVP.md                       # Phase 1 MVP scope and milestone execution plan
+└── README.md                    # Root platform documentation
 ```
 
 ---
 
-## 7. Getting Started: Local Development Setup
+## 5. Core Platform Capabilities
 
-### 7.1 Prerequisites
-* Node.js >= 20.x
-* pnpm >= 9.x (recommended) or npm >= 10.x
-* Python >= 3.11 with `pip` and `uv` or `venv`
-* Docker Engine >= 26.x and Docker Compose >= 2.x
-* PostgreSQL 16 with `pgvector` support
+### 5.1 Faith and Spiritual Profile System
+- **Church Hierarchy Integration**: Mapping across General Conference Divisions, Unions, Conferences/Missions, and Local Churches.
+- **Baptism & Sabbath Alignment**: Explicit tracking of baptism by immersion, Sabbath observance practices, and doctrinal perspectives.
+- **Church Ministry Engagement**: Participation in Pathfinders, Sabbath School, Adventist Youth, Music Ministry, Deaconry, and Eldership.
 
-### 7.2 Clone and Setup Environment
+### 5.2 Adventist Health and Lifestyle Standards
+- **Dietary Categories**: Support for Strict Vegan, Lacto-Ovo Vegetarian, Pescatarian, and Levitical Non-Vegetarian standards.
+- **Health Commitments**: Strict abstinence from alcohol, tobacco, narcotics, and unclean foods.
+- **Modesty & Recreation**: Alignment on music preferences, recreational activities, and Christian modesty.
+
+### 5.3 Multi-Tiered Verification and Safety
+- **Pastoral Endorsement Workflow**: Verification outreach enabling local pastors or elders to confirm membership and character standing.
+- **Identity & Face Matching**: Government photo ID upload combined with computer vision face matching and OCR birth date validation.
+- **Granular Photo Privacy**: Configurable photo privacy tiers (Public, Verified Members Only, Upon Approved Request) with automated dynamic watermarking.
+
+### 5.4 AI Compatibility and Discovery
+- **Theological Redline Filters**: Strict validation against non-negotiable faith parameters.
+- **Multi-Factor Scoring Formula**: Weighted mathematical scoring factoring faith alignment, lifestyle commitments, education, occupation, and geographic proximity.
+- **Vector Semantic Search**: Dense vector embeddings stored in PostgreSQL via `pgvector` for candidate discovery.
+
+### 5.5 Communication and Biodata Generation
+- **Two-Way Express Interest**: Structured interest request lifecycle (`PENDING` -> `ACCEPTED` / `DECLINED`).
+- **Real-Time Instant Messaging**: WebSocket 1-on-1 messaging unlocked only after mutual interest acceptance, with real-time NLP safety screening.
+- **Automated PDF Biodata Generator**: Formatted printable PDF exports for traditional family and pastoral review.
+
+---
+
+## 6. Quick Start Summary
+
+For comprehensive onboarding instructions, review [docs/GETTING_STARTED.md](file:///e:/Github/Matrimony%20Project/docs/GETTING_STARTED.md).
+
+### 6.1 Prerequisites
+- Node.js >= 20.x
+- Python >= 3.11
+- Docker Engine >= 26.x and Docker Compose >= 2.x
+
+### 6.2 Setup and Launch
 ```bash
-# Clone the repository
-git clone https://github.com/YourOrg/sda-matrimony-platform.git
-cd sda-matrimony-platform
+# 1. Clone repository and checkout branch
+git clone https://github.com/MasterZ1311/SDA-Matrimony-Site.git
+cd SDA-Matrimony-Site
+git checkout MasterZ-FullVersion
 
-# Copy environment templates
+# 2. Configure environment
 cp .env.example .env
-```
 
-### 7.3 Bootstrapping Dependencies and Local Infrastructure
-```bash
-# Start PostgreSQL (with pgvector), Redis, and MinIO in Docker
+# 3. Start local Docker infrastructure (PostgreSQL + pgvector, Redis, MinIO)
 docker compose -f infrastructure/docker/docker-compose.dev.yml up -d
 
-# Install Node.js dependencies
-pnpm install
+# 4. Install dependencies and build shared packages
+npm install
+npm run build:packages
 
-# Run database migrations and seeds
-pnpm db:migrate
-pnpm db:seed
-
-# Install Python AI microservice dependencies
-cd apps/ai-engine
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+# 5. Initialize database schema and seed data
+cd packages/database
+npx prisma db push
+npx ts-node prisma/seed.ts
 cd ../..
+
+# 6. Run all services concurrently
+npm run dev
 ```
 
-### 7.4 Running the Application Services
-```bash
-# Run all services concurrently (Frontend, Core API, AI Engine)
-pnpm dev
-```
-
-Service endpoints once running:
-* **Frontend Application**: `http://localhost:3000`
-* **Core API & Swagger Documentation**: `http://localhost:4000/api/docs`
-* **AI Engine & Docs**: `http://localhost:8000/docs`
-* **MinIO Object Storage Console**: `http://localhost:9001`
+### 6.3 Local Service URLs
+- **Web Application**: `http://localhost:3000`
+- **Core REST API**: `http://localhost:4000/api/docs`
+- **Realtime Gateway**: `ws://localhost:4001`
+- **AI Engine Docs**: `http://localhost:8000/docs`
+- **MinIO Console**: `http://localhost:9001`
 
 ---
 
-## 8. Quality Assurance and Coding Standards
+## 7. Security and Quality Assurance
 
-### 8.1 Git Workflow and Branching Strategy
-* **Protected Branches**: `main` (production), `develop` (staging).
-* **Feature Branches**: `feature/<issue-id>-<short-description>`
-* **Bug Fix Branches**: `fix/<issue-id>-<short-description>`
-* **Hotfix Branches**: `hotfix/<issue-id>-<short-description>`
-* **Pull Request Requirements**:
-  * Every PR requires at least 1 peer code review approval.
-  * All CI pipeline checks (lint, tests, build) must pass prior to merge.
-  * Commit messages must adhere to Conventional Commits standard:
-    * `feat: add pastoral verification status endpoint`
-    * `fix: resolve websocket reconnection issue on chat window`
-    * `chore: update pgvector dependency`
-
-### 8.2 Code Quality Commands
-```bash
-# Run static code analysis across all workspaces
-pnpm lint
-
-# Run type checks
-pnpm typecheck
-
-# Run test suites
-pnpm test:unit
-pnpm test:e2e
-```
+- **Static Type Safety**: End-to-end type validation across frontend, backend, and database layers via `@sda/common-types` and Prisma.
+- **Data Protection**: AES-256 encryption for PII at rest, TLS 1.3 in transit, and short-lived JWT access tokens with rotating refresh cookies.
+- **Audit Trails**: Immutable event logs for all verification decisions, profile modifications, and administrative oversight.
 
 ---
 
-## 9. Security, Privacy, and Compliance
-
-* **Data Protection**: Full compliance with global data protection standards (GDPR, CCPA).
-* **Encryption**: TLS 1.3 in transit, AES-256 for sensitive database fields (ID documents, phone numbers).
-* **Access Control**: Strict principle of least privilege using Role-Based Access Control (RBAC).
-* **Audit Logging**: Immutable audit trails for pastoral verifications, admin interventions, and sensitive profile inspections.
+*Architected and developed by MasterZ1311 ([https://github.com/MasterZ1311](https://github.com/MasterZ1311)).*
