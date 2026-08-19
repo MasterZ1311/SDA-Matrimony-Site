@@ -11,10 +11,10 @@ app = FastAPI(
     description="SDA Matrimony AI/ML Service - Faith Compatibility Engine and Automated Content Moderation"
 )
 
-# CORS Middleware
+# CORS Middleware - restrict allowed origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

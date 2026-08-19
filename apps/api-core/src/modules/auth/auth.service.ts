@@ -1,4 +1,5 @@
-import { Injectable, BadRequestException, UnauthorizedException, ConflictException } from '@nestjs/common';
+import { Injectable, BadRequestException, UnauthorizedException, ConflictException, InternalServerErrorException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
@@ -9,7 +10,24 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private configService: ConfigService,
   ) {}
+
+  private getJwtSecret(type: 'access' | 'refresh'): string {
+    const key = type === 'access' ? 'JWT_ACCESS_SECRET' : 'JWT_REFRESH_SECRET';
+    const secret = this.configService.get<string>(key) || process.env[key];
+
+    if (!secret) {
+      if (process.env.NODE_ENV === 'production') {
+        throw new InternalServerErrorException(`Missing required JWT secret configuration: ${key}`);
+      }
+      return type === 'access'
+        ? 'dev_only_jwt_access_secret_do_not_use_in_prod'
+        : 'dev_only_jwt_refresh_secret_do_not_use_in_prod';
+    }
+
+    return secret;
+  }
 
   async register(data: {
     email: string;
@@ -105,15 +123,17 @@ export class AuthService {
 
   generateTokens(userId: string, email: string, role: UserRole) {
     const payload = { sub: userId, email, role };
+    const accessSecret = this.getJwtSecret('access');
+    const refreshSecret = this.getJwtSecret('refresh');
 
     const accessToken = this.jwtService.sign(payload, {
-      secret: process.env.JWT_ACCESS_SECRET || 'sda_matrimony_jwt_default_secret_key_32chars',
-      expiresIn: '15m',
+      secret: accessSecret,
+      expiresIn: this.configService.get<string>('JWT_ACCESS_EXPIRATION') || '15m',
     });
 
     const refreshToken = this.jwtService.sign(payload, {
-      secret: process.env.JWT_REFRESH_SECRET || 'sda_matrimony_refresh_default_secret_key_32chars',
-      expiresIn: '7d',
+      secret: refreshSecret,
+      expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRATION') || '7d',
     });
 
     return { accessToken, refreshToken };
@@ -121,8 +141,9 @@ export class AuthService {
 
   async refreshToken(refreshToken: string) {
     try {
+      const refreshSecret = this.getJwtSecret('refresh');
       const payload = this.jwtService.verify(refreshToken, {
-        secret: process.env.JWT_REFRESH_SECRET || 'sda_matrimony_refresh_default_secret_key_32chars',
+        secret: refreshSecret,
       });
 
       const user = await this.prisma.user.findUnique({

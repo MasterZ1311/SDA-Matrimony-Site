@@ -68,6 +68,12 @@ a {
   padding: 0 24px;
 }
 
+@media (max-width: 640px) {
+  .container {
+    padding: 0 16px;
+  }
+}
+
 .btn {
   display: inline-flex;
   align-items: center;
@@ -80,6 +86,12 @@ a {
   border: 1px solid transparent;
   cursor: pointer;
   transition: all 0.2s ease-in-out;
+  text-decoration: none;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .btn-primary {
@@ -87,7 +99,7 @@ a {
   color: #FFFFFF;
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   background-color: var(--primary-700);
   box-shadow: var(--shadow-md);
 }
@@ -97,7 +109,7 @@ a {
   color: #FFFFFF;
 }
 
-.btn-gold:hover {
+.btn-gold:hover:not(:disabled) {
   background-color: var(--accent-gold-hover);
   box-shadow: var(--shadow-md);
 }
@@ -108,7 +120,7 @@ a {
   color: var(--text-main);
 }
 
-.btn-outline:hover {
+.btn-outline:hover:not(:disabled) {
   background-color: var(--primary-50);
   border-color: var(--primary-600);
 }
@@ -161,12 +173,25 @@ a {
   background-color: #FFFFFF;
   color: var(--text-main);
   outline: none;
-  transition: border-color 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .input-control:focus {
   border-color: var(--primary-700);
-  box-shadow: 0 0 0 3px rgba(27, 59, 111, 0.1);
+  box-shadow: 0 0 0 3px rgba(27, 59, 111, 0.12);
+}
+
+/* Skeleton Loading Animation */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #f0f3f6 25%, #e6eaf0 37%, #f0f3f6 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease infinite;
+  border-radius: var(--radius-sm);
 }
 
 /* Animations */
@@ -176,5 +201,57 @@ a {
 }
 
 .animate-fade {
-  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Responsive Helpers */
+@media (max-width: 768px) {
+  .nav-desktop {
+    display: none !important;
+  }
+  .nav-mobile-toggle {
+    display: flex !important;
+  }
+  .discover-layout {
+    grid-template-columns: 1fr !important;
+  }
+  .discover-sidebar {
+    position: static !important;
+  }
+  .chat-layout {
+    grid-template-columns: 1fr !important;
+    height: auto !important;
+    min-height: 600px !important;
+  }
+  .hero-title {
+    font-size: 2.2rem !important;
+  }
+  .biodata-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (min-width: 769px) {
+  .nav-desktop {
+    display: flex !important;
+  }
+  .nav-mobile-toggle {
+    display: none !important;
+  }
+}
+
+/* Print Styles for Biodata */
+@media print {
+  body {
+    background: #FFF !important;
+    color: #000 !important;
+  }
+  header, footer, .no-print, .btn, .toast-container {
+    display: none !important;
+  }
+  .card {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
 }

@@ -13,8 +13,14 @@ async function bootstrap() {
   app.setGlobalPrefix(prefix);
 
   // Enable CORS
+  const configuredOrigin = process.env.FRONTEND_URL || process.env.NEXT_PUBLIC_SITE_URL;
+  const defaultOrigins = ['http://localhost:3000', 'http://127.0.0.1:3000'];
+  const allowedOrigins = configuredOrigin
+    ? [...new Set([...configuredOrigin.split(',').map((o) => o.trim()), ...defaultOrigins])]
+    : defaultOrigins;
+
   app.enableCors({
-    origin: '*',
+    origin: allowedOrigins,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });

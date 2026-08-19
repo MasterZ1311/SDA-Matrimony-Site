@@ -15,7 +15,10 @@ import { PrismaClient, InterestStatus } from '@prisma/client';
 const prisma = new PrismaClient();
 
 @WebSocketGateway({
-  cors: { origin: '*' },
+  cors: {
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    credentials: true,
+  },
   namespace: '/',
 })
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -33,7 +36,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         return;
       }
 
-      const secret = process.env.JWT_ACCESS_SECRET || 'sda_matrimony_jwt_default_secret_key_32chars';
+      const secret = process.env.JWT_ACCESS_SECRET;
+      if (!secret) {
+        this.logger.error('JWT_ACCESS_SECRET is not defined');
+        client.disconnect();
+        return;
+      }
+
       const payload = jwt.verify(token, secret) as any;
       client.data.userId = payload.sub;
 
@@ -62,6 +71,17 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { conversationId: string },
   ) {
+    const userId = client.data.userId;
+    if (!userId) return { error: 'Unauthorized' };
+
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: data.conversationId },
+    });
+
+    if (!conversation || (conversation.user1Id !== userId && conversation.user2Id !== userId)) {
+      return { error: 'Forbidden: You are not a participant in this conversation' };
+    }
+
     client.join(`conv_${data.conversationId}`);
     return { status: 'joined', conversationId: data.conversationId };
   }
@@ -69,17 +89,31 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('send_message')
   async handleSendMessage(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { conversationId: string; receiverId: string; content: string },
+    @MessageBody() data: { conversationId: string; content: string },
   ) {
     const senderId = client.data.userId;
     if (!senderId) return { error: 'Unauthorized' };
 
-    // Strict Rule: Mutual interest must exist or conversation established
+    if (!data.content || !data.content.trim()) {
+      return { error: 'Message content cannot be empty.' };
+    }
+
+    // Strict Authorization: User must belong to conversation
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: data.conversationId },
+    });
+
+    if (!conversation || (conversation.user1Id !== senderId && conversation.user2Id !== senderId)) {
+      return { error: 'Forbidden: Unauthorized to send message to this conversation' };
+    }
+
+    const receiverId = conversation.user1Id === senderId ? conversation.user2Id : conversation.user1Id;
+
     const message = await prisma.chatMessage.create({
       data: {
         conversationId: data.conversationId,
         senderId,
-        content: data.content,
+        content: data.content.trim(),
       },
       include: {
         sender: {
@@ -88,18 +122,23 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       },
     });
 
+    await prisma.conversation.update({
+      where: { id: data.conversationId },
+      data: { updatedAt: new Date() },
+    });
+
     // Broadcast message to conversation room
     this.server.to(`conv_${data.conversationId}`).emit('new_message', message);
 
     // Also send direct alert to receiver if online
-    const receiverSocketId = this.activeUsers.get(data.receiverId);
+    const receiverSocketId = this.activeUsers.get(receiverId);
     if (receiverSocketId) {
       const senderName = message.sender.profile
         ? `${message.sender.profile.firstName} ${message.sender.profile.lastName}`.trim()
         : (message.sender.email || 'A member');
       this.server.to(receiverSocketId).emit('message_notification', {
         senderName,
-        content: data.content,
+        content: data.content.trim(),
         conversationId: data.conversationId,
       });
     }

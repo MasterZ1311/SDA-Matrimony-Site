@@ -1,10 +1,15 @@
-from fastapi import APIRouter, File, UploadFile, HTTPException
+from fastapi import APIRouter, File, UploadFile, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Dict, Any
 from ...services.vision_service import VisionModerationService
 from ...services.nlp_service import NLPContentFilter
+from ...core.security import verify_api_key
 
-router = APIRouter(prefix="/moderation", tags=["Content Safety & Moderation"])
+router = APIRouter(
+    prefix="/moderation",
+    tags=["Content Safety & Moderation"],
+    dependencies=[Depends(verify_api_key)],
+)
 
 class TextScreenPayload(BaseModel):
     text: str

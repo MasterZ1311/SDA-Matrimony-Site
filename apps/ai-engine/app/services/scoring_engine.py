@@ -8,37 +8,41 @@ class SDAMatchScoringEngine:
 
     @staticmethod
     def calculate_compatibility(profile_a: Dict[str, Any], profile_b: Dict[str, Any]) -> Dict[str, Any]:
+        p_a = profile_a if isinstance(profile_a, dict) else {}
+        p_b = profile_b if isinstance(profile_b, dict) else {}
+
         factors: List[Dict[str, Any]] = []
         
         # 1. Spiritual & Faith Alignment (Max 40 pts)
-        spiritual_score, spiritual_factors = SDAMatchScoringEngine._score_spiritual(
-            profile_a.get("spiritualProfile", {}),
-            profile_b.get("spiritualProfile", {})
-        )
+        sp_a = p_a.get("spiritualProfile") if isinstance(p_a.get("spiritualProfile"), dict) else {}
+        sp_b = p_b.get("spiritualProfile") if isinstance(p_b.get("spiritualProfile"), dict) else {}
+        spiritual_score, spiritual_factors = SDAMatchScoringEngine._score_spiritual(sp_a, sp_b)
         factors.extend(spiritual_factors)
 
         # 2. Lifestyle & Health Message (Max 25 pts)
-        lifestyle_score, lifestyle_factors = SDAMatchScoringEngine._score_lifestyle(
-            profile_a.get("lifestyleProfile", {}),
-            profile_b.get("lifestyleProfile", {})
-        )
+        ls_a = p_a.get("lifestyleProfile") if isinstance(p_a.get("lifestyleProfile"), dict) else {}
+        ls_b = p_b.get("lifestyleProfile") if isinstance(p_b.get("lifestyleProfile"), dict) else {}
+        lifestyle_score, lifestyle_factors = SDAMatchScoringEngine._score_lifestyle(ls_a, ls_b)
         factors.extend(lifestyle_factors)
 
         # 3. Location & Relocation Alignment (Max 20 pts)
-        relocation_score, relocation_factors = SDAMatchScoringEngine._score_relocation(
-            profile_a, profile_b
-        )
+        relocation_score, relocation_factors = SDAMatchScoringEngine._score_relocation(p_a, p_b)
         factors.extend(relocation_factors)
 
         # 4. Education & Career Alignment (Max 15 pts)
-        education_score, education_factors = SDAMatchScoringEngine._score_education(
-            profile_a.get("educationCareer", {}),
-            profile_b.get("educationCareer", {})
-        )
+        ec_a = p_a.get("educationCareer") if isinstance(p_a.get("educationCareer"), dict) else {}
+        ec_b = p_b.get("educationCareer") if isinstance(p_b.get("educationCareer"), dict) else {}
+        education_score, education_factors = SDAMatchScoringEngine._score_education(ec_a, ec_b)
         factors.extend(education_factors)
 
         total_score = round(spiritual_score + lifestyle_score + relocation_score + education_score)
         total_score = max(0, min(100, total_score))
+
+        # Category scores normalized to 0-100%
+        cat_spiritual = round((spiritual_score / 40.0) * 100) if spiritual_score > 0 else 0
+        cat_lifestyle = round((lifestyle_score / 25.0) * 100) if lifestyle_score > 0 else 0
+        cat_relocation = round((relocation_score / 20.0) * 100) if relocation_score > 0 else 0
+        cat_education = round((education_score / 15.0) * 100) if education_score > 0 else 0
 
         # Generate summary description
         if total_score >= 85:
@@ -53,10 +57,10 @@ class SDAMatchScoringEngine:
         return {
             "overallScore": total_score,
             "categoryScores": {
-                "spiritualAlignment": round((spiritual_score / 40.0) * 100),
-                "lifestyleAlignment": round((lifestyle_score / 25.0) * 100),
-                "locationAndRelocation": round((relocation_score / 20.0) * 100),
-                "educationAndCareer": round((education_score / 15.0) * 100),
+                "spiritualAlignment": max(0, min(100, cat_spiritual)),
+                "lifestyleAlignment": max(0, min(100, cat_lifestyle)),
+                "locationAndRelocation": max(0, min(100, cat_relocation)),
+                "educationAndCareer": max(0, min(100, cat_education)),
             },
             "factors": factors,
             "summary": summary
@@ -68,8 +72,9 @@ class SDAMatchScoringEngine:
         factors = []
 
         # Baptism Status (Max 15)
-        b_a = sp_a.get("baptismStatus")
-        b_b = sp_b.get("baptismStatus")
+        b_a = str(sp_a.get("baptismStatus") or "").strip().upper()
+        b_b = str(sp_b.get("baptismStatus") or "").strip().upper()
+        
         if b_a == "BAPTIZED_SDA" and b_b == "BAPTIZED_SDA":
             score += 15.0
             factors.append({
@@ -88,7 +93,7 @@ class SDAMatchScoringEngine:
                 "maxScore": 15,
                 "explanation": "One candidate is baptized and the other is actively preparing for SDA baptism."
             })
-        else:
+        elif b_a and b_b:
             score += 5.0
             factors.append({
                 "factorName": "Baptism Status",
@@ -97,10 +102,20 @@ class SDAMatchScoringEngine:
                 "maxScore": 15,
                 "explanation": "Different baptism stages within the Adventist community."
             })
+        else:
+            score += 3.0
+            factors.append({
+                "factorName": "Baptism Status",
+                "weight": 15,
+                "score": 3,
+                "maxScore": 15,
+                "explanation": "Baptism information partially unstated."
+            })
 
         # Sabbath Observance (Max 15)
-        s_a = sp_a.get("sabbathObservance")
-        s_b = sp_b.get("sabbathObservance")
+        s_a = str(sp_a.get("sabbathObservance") or "").strip().upper()
+        s_b = str(sp_b.get("sabbathObservance") or "").strip().upper()
+        
         if s_a == "STRICT_SUNSET_TO_SUNSET" and s_b == "STRICT_SUNSET_TO_SUNSET":
             score += 15.0
             factors.append({
@@ -110,7 +125,7 @@ class SDAMatchScoringEngine:
                 "maxScore": 15,
                 "explanation": "Shared dedication to strict Friday-to-Saturday sunset Sabbath keeping."
             })
-        elif s_a == s_b:
+        elif s_a and s_b and s_a == s_b:
             score += 12.0
             factors.append({
                 "factorName": "Sabbath Observance",
@@ -119,7 +134,7 @@ class SDAMatchScoringEngine:
                 "maxScore": 15,
                 "explanation": "Harmonious perspective on Sabbath hours and holy time."
             })
-        else:
+        elif s_a and s_b:
             score += 6.0
             factors.append({
                 "factorName": "Sabbath Observance",
@@ -128,11 +143,26 @@ class SDAMatchScoringEngine:
                 "maxScore": 15,
                 "explanation": "Varying practices regarding Sabbath activities."
             })
+        else:
+            score += 4.0
+            factors.append({
+                "factorName": "Sabbath Observance",
+                "weight": 15,
+                "score": 4,
+                "maxScore": 15,
+                "explanation": "Sabbath practice preferences partially unspecified."
+            })
 
         # Church Ministry Engagement (Max 10)
-        m_a = set(sp_a.get("ministries", []))
-        m_b = set(sp_b.get("ministries", []))
+        raw_m_a = sp_a.get("ministries")
+        raw_m_b = sp_b.get("ministries")
+        list_m_a = [str(x) for x in raw_m_a] if isinstance(raw_m_a, (list, tuple, set)) else []
+        list_m_b = [str(x) for x in raw_m_b] if isinstance(raw_m_b, (list, tuple, set)) else []
+        
+        m_a = set(list_m_a)
+        m_b = set(list_m_b)
         common_ministries = m_a.intersection(m_b)
+        
         if len(common_ministries) >= 2:
             score += 10.0
             factors.append({
@@ -140,7 +170,7 @@ class SDAMatchScoringEngine:
                 "weight": 10,
                 "score": 10,
                 "maxScore": 10,
-                "explanation": f"Multiple shared church ministries: {', '.join(common_ministries)}."
+                "explanation": f"Multiple shared church ministries: {', '.join(sorted(common_ministries))}."
             })
         elif len(common_ministries) == 1:
             score += 7.0
@@ -178,11 +208,11 @@ class SDAMatchScoringEngine:
         factors = []
 
         # Diet (Max 15)
-        d_a = ls_a.get("diet")
-        d_b = ls_b.get("diet")
+        d_a = str(ls_a.get("diet") or "").strip().upper()
+        d_b = str(ls_b.get("diet") or "").strip().upper()
         vegetarian_set = {"STRICT_VEGAN", "LACTO_OVO_VEGETARIAN"}
         
-        if d_a == d_b:
+        if d_a and d_b and d_a == d_b:
             score += 15.0
             factors.append({
                 "factorName": "Dietary Standards",
@@ -200,7 +230,7 @@ class SDAMatchScoringEngine:
                 "maxScore": 15,
                 "explanation": "Both adhere to plant-based Adventist health principles."
             })
-        else:
+        elif d_a and d_b:
             score += 6.0
             factors.append({
                 "factorName": "Dietary Standards",
@@ -209,11 +239,22 @@ class SDAMatchScoringEngine:
                 "maxScore": 15,
                 "explanation": "Different dietary practices; discussion advised for home meal preparation."
             })
+        else:
+            score += 4.0
+            factors.append({
+                "factorName": "Dietary Standards",
+                "weight": 15,
+                "score": 4,
+                "maxScore": 15,
+                "explanation": "Dietary preferences partially unspecified."
+            })
 
         # Health Habits & Abstinence (Max 10)
-        at_a = ls_a.get("alcoholTobacco")
-        at_b = ls_b.get("alcoholTobacco")
-        if at_a in ["STRICT_ABSTINENCE", "NEVER_USED"] and at_b in ["STRICT_ABSTINENCE", "NEVER_USED"]:
+        at_a = str(ls_a.get("alcoholTobacco") or "").strip().upper()
+        at_b = str(ls_b.get("alcoholTobacco") or "").strip().upper()
+        abstinence_set = {"STRICT_ABSTINENCE", "NEVER_USED"}
+        
+        if at_a in abstinence_set and at_b in abstinence_set:
             score += 10.0
             factors.append({
                 "factorName": "Health Message Abstinence",
@@ -222,7 +263,7 @@ class SDAMatchScoringEngine:
                 "maxScore": 10,
                 "explanation": "Total alignment on Adventist temperance (no alcohol, tobacco, or illicit substances)."
             })
-        else:
+        elif at_a and at_b:
             score += 4.0
             factors.append({
                 "factorName": "Health Message Abstinence",
@@ -230,6 +271,15 @@ class SDAMatchScoringEngine:
                 "score": 4,
                 "maxScore": 10,
                 "explanation": "Variations in temperance commitments."
+            })
+        else:
+            score += 3.0
+            factors.append({
+                "factorName": "Health Message Abstinence",
+                "weight": 10,
+                "score": 3,
+                "maxScore": 10,
+                "explanation": "Temperance status not fully specified."
             })
 
         return score, factors
@@ -239,11 +289,19 @@ class SDAMatchScoringEngine:
         score = 0.0
         factors = []
 
-        same_country = p_a.get("residenceCountry") == p_b.get("residenceCountry")
-        same_city = same_country and (p_a.get("residenceCity") == p_b.get("residenceCity"))
+        country_a = str(p_a.get("residenceCountry") or "").strip().lower()
+        country_b = str(p_b.get("residenceCountry") or "").strip().lower()
+        city_a = str(p_a.get("residenceCity") or "").strip().lower()
+        city_b = str(p_b.get("residenceCity") or "").strip().lower()
 
-        relo_a = p_a.get("educationCareer", {}).get("relocationPreference")
-        relo_b = p_b.get("educationCareer", {}).get("relocationPreference")
+        same_country = bool(country_a and country_b and country_a == country_b)
+        same_city = bool(same_country and city_a and city_b and city_a == city_b)
+
+        ec_a = p_a.get("educationCareer") if isinstance(p_a.get("educationCareer"), dict) else {}
+        ec_b = p_b.get("educationCareer") if isinstance(p_b.get("educationCareer"), dict) else {}
+        
+        relo_a = str(ec_a.get("relocationPreference") or "").strip().upper()
+        relo_b = str(ec_b.get("relocationPreference") or "").strip().upper()
 
         if same_city:
             score = 20.0
@@ -272,6 +330,15 @@ class SDAMatchScoringEngine:
                 "maxScore": 20,
                 "explanation": "Open to international relocation for family and mission."
             })
+        elif "WITHIN_DIVISION" in [relo_a, relo_b] or "WITHIN_COUNTRY" in [relo_a, relo_b]:
+            score = 11.0
+            factors.append({
+                "factorName": "Relocation Readiness",
+                "weight": 20,
+                "score": 11,
+                "maxScore": 20,
+                "explanation": "Open to regional or division-level relocation."
+            })
         else:
             score = 8.0
             factors.append({
@@ -286,12 +353,41 @@ class SDAMatchScoringEngine:
 
     @staticmethod
     def _score_education(ec_a: Dict[str, Any], ec_b: Dict[str, Any]) -> Tuple[float, List[Dict[str, Any]]]:
-        score = 12.0
+        edu_rank = {
+            "DOCTORATE": 5,
+            "MASTERS": 4,
+            "BACHELORS": 3,
+            "DIPLOMA": 2,
+            "HIGH_SCHOOL": 1,
+            "OTHER": 2,
+        }
+
+        edu_a = str(ec_a.get("highestEducation") or "").strip().upper()
+        edu_b = str(ec_b.get("highestEducation") or "").strip().upper()
+
+        rank_a = edu_rank.get(edu_a, 3)
+        rank_b = edu_rank.get(edu_b, 3)
+
+        diff = abs(rank_a - rank_b)
+        if diff == 0:
+            score = 15.0
+            explanation = "Harmonious educational backgrounds and shared professional ambitions."
+        elif diff == 1:
+            score = 13.0
+            explanation = "Complementary educational levels and mutual professional respect."
+        elif diff == 2:
+            score = 10.0
+            explanation = "Different educational backgrounds with potential for mutual growth."
+        else:
+            score = 8.0
+            explanation = "Varied educational trajectories; shared values remain primary."
+
         factors = [{
             "factorName": "Education & Career Alignment",
             "weight": 15,
-            "score": 12,
+            "score": round(score),
             "maxScore": 15,
-            "explanation": "Complementary educational backgrounds and professional vocations."
+            "explanation": explanation
         }]
         return score, factors
+

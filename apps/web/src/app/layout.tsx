@@ -1,6 +1,7 @@
 import './globals.css';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
+import { ToastContainer } from '@/components/common/Toast';
 
 export const metadata = {
   title: 'SDA Matrimony | Faith-Aligned Seventh-day Adventist Matchmaking',
@@ -27,6 +28,7 @@ export default function RootLayout({
           <Navbar />
           <main style={{ flex: 1 }}>{children}</main>
           <Footer />
+          <ToastContainer />
         </div>
       </body>
     </html>

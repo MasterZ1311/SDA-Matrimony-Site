@@ -6,16 +6,20 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Gender } from '@prisma/client';
 
 import { IsEmail, IsString, IsNotEmpty, IsEnum, IsDateString, MinLength } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class RegisterRequestDto {
   @ApiProperty({ example: 'david.miller@sda-matrimony.test' })
   @IsEmail({}, { message: 'Please provide a valid email address.' })
+  @IsNotEmpty({ message: 'Email is required.' })
+  @Transform(({ value }) => typeof value === 'string' ? value.trim().toLowerCase() : value)
   email: string;
 
-  @ApiProperty({ example: 'Password123!', minLength: 6 })
+  @ApiProperty({ example: 'Password123!', minLength: 8 })
   @IsString()
-  @MinLength(6, { message: 'Password must be at least 6 characters long.' })
+  @IsNotEmpty({ message: 'Password is required.' })
+  @MinLength(8, { message: 'Password must be at least 8 characters long.' })
   password: string;
 
   @ApiProperty({ example: 'David' })
@@ -30,16 +34,20 @@ export class RegisterRequestDto {
 
   @ApiProperty({ enum: Gender, example: Gender.MALE })
   @IsEnum(Gender, { message: 'Gender must be MALE or FEMALE.' })
+  @IsNotEmpty({ message: 'Gender is required.' })
   gender: Gender;
 
   @ApiProperty({ example: '1996-04-15' })
   @IsDateString({}, { message: 'Please provide a valid date string (YYYY-MM-DD).' })
+  @IsNotEmpty({ message: 'Date of birth is required.' })
   dateOfBirth: string;
 }
 
 export class LoginRequestDto {
   @ApiProperty({ example: 'david.miller@sda-matrimony.test' })
   @IsEmail({}, { message: 'Please provide a valid email address.' })
+  @IsNotEmpty({ message: 'Email is required.' })
+  @Transform(({ value }) => typeof value === 'string' ? value.trim().toLowerCase() : value)
   email: string;
 
   @ApiProperty({ example: 'Password123!' })
@@ -49,9 +57,9 @@ export class LoginRequestDto {
 }
 
 export class RefreshTokenDto {
-  @ApiProperty()
+  @ApiProperty({ example: 'eyJhbGciOiJIUzI1NiIsIn...' })
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'Refresh token is required.' })
   refreshToken: string;
 }
 

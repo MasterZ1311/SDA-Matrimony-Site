@@ -2,8 +2,13 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Dict, Any, List
 from ...services.scoring_engine import SDAMatchScoringEngine
+from ...core.security import verify_api_key
 
-router = APIRouter(prefix="/compatibility", tags=["Compatibility Matching"])
+router = APIRouter(
+    prefix="/compatibility",
+    tags=["Compatibility Matching"],
+    dependencies=[Depends(verify_api_key)],
+)
 
 class ProfileDataPayload(BaseModel):
     profileA: Dict[str, Any]

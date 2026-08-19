@@ -2,7 +2,9 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useMatrimonyStore } from '@/stores/matrimonyStore';
 import { useAuthStore } from '@/stores/authStore';
+import { BiodataModal } from '@/components/common/BiodataModal';
 import {
   Heart,
   FileDown,
@@ -15,279 +17,194 @@ import {
   GraduationCap,
   Users,
   ArrowLeft,
-  Sparkles,
-  Edit3
+  Share2,
+  AlertCircle,
+  MessageSquare,
 } from 'lucide-react';
 
-interface CandidateDetail {
-  id: string;
-  name: string;
-  age: number;
-  gender: string;
-  occupation: string;
-  institutionOrEmployer: string;
-  degree: string;
-  city: string;
-  state: string;
-  country: string;
-  division: string;
-  union: string;
-  conference: string;
-  homeChurch: string;
-  baptismStatus: string;
-  baptismYear: number;
-  sabbathObservance: string;
-  ministries: string[];
-  favoriteVerse: string;
-  diet: string;
-  temperance: string;
-  musicAndHobbies: string;
-  modestyValues: string;
-  relocationPreference: string;
-  familyHeritage: string;
-  parentsSiblings: string;
-  homeTraditions: string;
-  isPastoralVerified: boolean;
-  compatibilityScore: number;
-  imageUrl: string;
-}
-
-const profileDatabase: Record<string, CandidateDetail> = {
-  'demo-user-1': {
-    id: 'demo-user-1',
-    name: 'David Miller',
-    age: 30,
-    gender: 'MALE',
-    occupation: 'Resident Physician (Internal Medicine)',
-    institutionOrEmployer: 'Loma Linda University Medical Center',
-    degree: 'Doctor of Medicine (M.D.) — Loma Linda University',
-    city: 'Loma Linda',
-    state: 'California',
-    country: 'United States',
-    division: 'North American Division',
-    union: 'Pacific Union Conference',
-    conference: 'Southeastern California Conference',
-    homeChurch: 'Loma Linda University Church',
-    baptismStatus: 'Baptized SDA by Immersion',
-    baptismYear: 2008,
-    sabbathObservance: 'Strict Sunset to Sunset (Friday to Saturday)',
-    ministries: ['Medical Missionary Work', 'Sabbath School Facilitator', 'Sanctuary Choir'],
-    favoriteVerse: '"Trust in the LORD with all thine heart; and lean not unto thine own understanding. In all thy ways acknowledge him, and he shall direct thy paths." — Proverbs 3:5-6',
-    diet: 'Strict Vegan (Whole Food Plant-Based)',
-    temperance: 'Strict Abstinence (Lifelong Non-Drinker & Non-Smoker)',
-    musicAndHobbies: 'Classical Organ & Sacred Hymnody, Wilderness Backpacking, Gardening',
-    modestyValues: 'Committed to Christ-like decorum and Christian simplicity',
-    relocationPreference: 'Willing to Relocate Globally for Medical Missions',
-    familyHeritage: 'Second-generation Adventist family devoted to healthcare & pastoral service',
-    parentsSiblings: 'Father (SDA Minister), Mother (Public Health Educator), 2 Younger Sisters',
-    homeTraditions: 'Friday evening vespers, Sabbath nature walks, family prayer altar',
-    isPastoralVerified: true,
-    compatibilityScore: 96,
-    imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=800',
-  },
-  'demo-user-2': {
-    id: 'demo-user-2',
-    name: 'Sarah Johnson',
-    age: 28,
-    gender: 'FEMALE',
-    occupation: 'Secondary Science Educator (Biology & Chemistry)',
-    institutionOrEmployer: 'Spencerville Adventist Academy',
-    degree: 'Master of Education (M.Ed) — Andrews University',
-    city: 'Silver Spring',
-    state: 'Maryland',
-    country: 'United States',
-    division: 'North American Division',
-    union: 'Columbia Union Conference',
-    conference: 'Chesapeake Conference',
-    homeChurch: 'Spencerville Seventh-day Adventist Church',
-    baptismStatus: 'Baptized SDA by Immersion',
-    baptismYear: 2010,
-    sabbathObservance: 'Strict Sunset to Sunset (Friday to Saturday)',
-    ministries: ['Adventist Youth (AY Leader)', 'Pathfinder Counselor', 'Sabbath School Teacher'],
-    favoriteVerse: '"For I know the plans I have for you, declares the Lord, plans to prosper you and not to harm you, plans to give you hope and a future." — Jeremiah 29:11',
-    diet: 'Lacto-Ovo Vegetarian (Plant-forward home)',
-    temperance: 'Strict Total Abstinence (Lifelong)',
-    musicAndHobbies: 'Sacred Choral, Acoustic Christian, Nature Hikes, Artisan Sourdough Baking',
-    modestyValues: 'Committed to biblical simplicity and modesty values',
-    relocationPreference: 'Open to Relocation within North American Division / Global',
-    familyHeritage: 'Multi-generational Adventist family dedicated to Christian education',
-    parentsSiblings: 'Father (Healthcare Admin), Mother (Registered Nurse), 1 Younger Brother',
-    homeTraditions: 'Friday evening Sabbath welcome, family worship, and hospitality',
-    isPastoralVerified: true,
-    compatibilityScore: 94,
-    imageUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=800',
-  },
-  'demo-user-3': {
-    id: 'demo-user-3',
-    name: 'Rachel Vance',
-    age: 26,
-    gender: 'FEMALE',
-    occupation: 'Registered Nurse (BSN, ICU Specialist)',
-    institutionOrEmployer: 'Adventist Health Glendale',
-    degree: 'Bachelor of Science in Nursing (BSN) — Southern Adventist University',
-    city: 'Glendale',
-    state: 'California',
-    country: 'United States',
-    division: 'North American Division',
-    union: 'Pacific Union Conference',
-    conference: 'Southern California Conference',
-    homeChurch: 'Vallejo Drive SDA Church',
-    baptismStatus: 'Baptized SDA by Immersion',
-    baptismYear: 2012,
-    sabbathObservance: 'Strict Sunset to Sunset',
-    ministries: ['Health Ministry Director', 'Community Service Center', 'Music Ministry'],
-    favoriteVerse: '"He has shown you, O mortal, what is good. And what does the LORD require of you? To act justly and to love mercy and to walk humbly with your God." — Micah 6:8',
-    diet: 'Strict Vegan (8 Laws of Health)',
-    temperance: 'Strict Abstinence',
-    musicAndHobbies: 'Classical Piano, Trail Running, Adventist Health Cooking Demonstrations',
-    modestyValues: 'Biblical simplicity in lifestyle and dress',
-    relocationPreference: 'Willing to Relocate within Country',
-    familyHeritage: 'Adventist family with roots in mission hospitals and community outreach',
-    parentsSiblings: 'Parents (Missionary Nurses), 1 Older Sister',
-    homeTraditions: 'Sabbath potlucks, morning prayer devotionals',
-    isPastoralVerified: true,
-    compatibilityScore: 91,
-    imageUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=800',
-  },
-  'demo-user-4': {
-    id: 'demo-user-4',
-    name: 'Rebecca Mthembu',
-    age: 29,
-    gender: 'FEMALE',
-    occupation: 'Software Engineer & Digital Ministry Lead',
-    institutionOrEmployer: 'Enterprise Cloud Solutions',
-    degree: 'B.Sc Computer Science — Helderberg College of Higher Education',
-    city: 'Johannesburg',
-    state: 'Gauteng',
-    country: 'South Africa',
-    division: 'Southern Africa-Indian Ocean Division (SID)',
-    union: 'Southern Africa Union Conference',
-    conference: 'Trans-Orange Conference',
-    homeChurch: 'Central Johannesburg SDA Church',
-    baptismStatus: 'Baptized SDA by Immersion',
-    baptismYear: 2009,
-    sabbathObservance: 'Strict Sunset to Sunset',
-    ministries: ['Adventist Youth Society Leader', 'Media & AV Ministry', 'Literature Evangelism'],
-    favoriteVerse: '"And this gospel of the kingdom will be preached in all the world as a witness to all the nations, and then the end will come." — Matthew 24:14',
-    diet: 'Lacto-Ovo Vegetarian',
-    temperance: 'Strict Total Abstinence',
-    musicAndHobbies: 'A cappella quartet singing, Drone videography, Bible prophecy study groups',
-    modestyValues: 'Traditional Christian decorum',
-    relocationPreference: 'Willing to Relocate Anywhere for Marriage & Mission',
-    familyHeritage: 'Committed Adventist family spanning three generations',
-    parentsSiblings: 'Father (Civil Engineer), Mother (Teacher), 2 Brothers',
-    homeTraditions: 'Sunset Sabbath opening song service, family devotional journaling',
-    isPastoralVerified: true,
-    compatibilityScore: 88,
-    imageUrl: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&q=80&w=800',
-  },
-};
-
 export default function ProfileDetailPage({ params }: { params: { id: string } }) {
+  const { candidates, interests, expressInterest, addToast } = useMatrimonyStore();
   const { user } = useAuthStore();
-  const [interestSent, setInterestSent] = useState(false);
-  const [downloading, setDownloading] = useState(false);
+  const [showBiodataModal, setShowBiodataModal] = useState(false);
+  const [customMsgModal, setCustomMsgModal] = useState(false);
+  const [introText, setIntroText] = useState('');
 
-  const profileId = params.id === 'me' ? (user?.id === 'demo-user-2' ? 'demo-user-2' : 'demo-user-1') : params.id;
-  const profile = profileDatabase[profileId] || profileDatabase['demo-user-2'];
-  const isOwnProfile = params.id === 'me' || (user && user.id === profileId);
+  // Resolve ID
+  const effectiveId = params.id === 'me' ? (user?.id || 'demo-user-1') : params.id;
+  const candidate = candidates.find(
+    (c) => c.id === effectiveId || (params.id === 'me' && c.id === 'demo-user-1')
+  );
 
-  const handleDownloadBiodata = () => {
-    setDownloading(true);
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
-    setTimeout(() => {
-      setDownloading(false);
-      window.open(`${apiUrl}/biodata/${profile.id}/download`, '_blank');
-    }, 500);
+  const isMe = params.id === 'me' || (user && user.id === candidate?.id);
+
+  const alreadySent = interests.some(
+    (i) => i.candidateId === candidate?.id && i.type === 'SENT'
+  );
+
+  const isMutual = interests.some(
+    (i) => i.candidateId === candidate?.id && i.status === 'ACCEPTED'
+  );
+
+  const handleSendInterest = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!candidate) return;
+    expressInterest(candidate.id, introText);
+    setCustomMsgModal(false);
+    setIntroText('');
   };
 
+  const handleCopyLink = () => {
+    if (typeof window !== 'undefined') {
+      navigator.clipboard.writeText(window.location.href);
+      addToast({
+        title: 'Profile Link Copied',
+        description: 'Biodata shareable link copied to clipboard.',
+        type: 'info',
+      });
+    }
+  };
+
+  if (!candidate) {
+    return (
+      <div style={{ padding: '80px 20px', textAlign: 'center', backgroundColor: 'var(--bg-page)', minHeight: 'calc(100vh - 150px)' }}>
+        <div className="container" style={{ maxWidth: '540px' }}>
+          <div className="card animate-fade" style={{ padding: '40px' }}>
+            <AlertCircle size={48} color="var(--warning)" style={{ margin: '0 auto 16px auto' }} />
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--primary-900)', marginBottom: '8px' }}>
+              Candidate Profile Not Found
+            </h2>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '24px' }}>
+              The requested Seventh-day Adventist member biodata is unavailable or has been made private.
+            </p>
+            <Link href="/discover" className="btn btn-primary">
+              <ArrowLeft size={16} /> Return to Candidate Directory
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div style={{ padding: '40px 0', backgroundColor: 'var(--bg-page)', minHeight: 'calc(100vh - 150px)' }}>
-      <div className="container" style={{ maxWidth: '1000px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <Link href="/discover" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem', color: 'var(--primary-700)', fontWeight: 600 }}>
-            <ArrowLeft size={16} /> Back to Candidates
+    <div style={{ padding: '36px 0', backgroundColor: 'var(--bg-page)', minHeight: 'calc(100vh - 150px)' }}>
+      <div className="container" style={{ maxWidth: '1020px' }}>
+        {/* Navigation back and Share */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
+          <Link
+            href="/discover"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.9rem',
+              color: 'var(--primary-700)',
+              fontWeight: 600,
+            }}
+          >
+            <ArrowLeft size={16} /> Back to Candidates Directory
           </Link>
-          {isOwnProfile && (
-            <span className="badge badge-primary" style={{ padding: '6px 12px', fontSize: '0.8rem' }}>
-              <ShieldCheck size={14} /> Viewing Your Official Matrimonial Profile
-            </span>
-          )}
+
+          <button
+            onClick={handleCopyLink}
+            className="btn btn-outline"
+            style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+          >
+            <Share2 size={14} /> Share Profile
+          </button>
         </div>
 
         {/* Profile Header Banner Card */}
-        <div className="card" style={{ padding: '32px', marginBottom: '24px' }}>
-          <div style={{ display: 'flex', gap: '32px', flexWrap: 'wrap', alignItems: 'center' }}>
-            <div style={{
-              width: '140px',
-              height: '140px',
-              borderRadius: '50%',
-              backgroundImage: `url("${profile.imageUrl}")`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              border: '4px solid #FFFFFF',
-              boxShadow: 'var(--shadow-md)',
-              flexShrink: 0,
-            }} />
+        <div className="card animate-fade" style={{ padding: '32px', marginBottom: '24px' }}>
+          <div style={{ display: 'flex', gap: '28px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div
+              style={{
+                width: '130px',
+                height: '130px',
+                borderRadius: '50%',
+                backgroundImage: `url(${candidate.imageUrl})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                border: '4px solid #FFFFFF',
+                boxShadow: 'var(--shadow-md)',
+                flexShrink: 0,
+              }}
+            />
 
             <div style={{ flex: 1, minWidth: '260px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '6px' }}>
                 <h1 style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--primary-900)' }}>
-                  {profile.name}, {profile.age}
+                  {candidate.name}, {candidate.age}
                 </h1>
-                {profile.isPastoralVerified && (
+                {candidate.isPastoralVerified && (
                   <span className="badge badge-verified">
                     <CheckCircle2 size={13} /> Pastoral Verified
                   </span>
                 )}
                 <span className="badge badge-gold">
-                  <Sparkles size={13} /> {profile.compatibilityScore}% Faith Compatibility
+                  {candidate.compatibilityScore}% Compatibility
+                </span>
+                {isMe && (
+                  <span className="badge badge-primary">
+                    Logged-in Profile
+                  </span>
+                )}
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '16px',
+                  flexWrap: 'wrap',
+                  fontSize: '0.875rem',
+                  color: 'var(--text-secondary)',
+                  marginBottom: '14px',
+                }}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <Briefcase size={15} color="var(--primary-700)" /> {candidate.occupation}
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <MapPin size={15} color="var(--primary-700)" /> {candidate.city}{candidate.state ? `, ${candidate.state}` : ''}, {candidate.country}
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <BookOpen size={15} color="var(--primary-700)" /> Baptized SDA ({candidate.baptismYear})
                 </span>
               </div>
 
-              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <Briefcase size={15} color="var(--primary-700)" /> {profile.occupation}
-                </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <MapPin size={15} color="var(--primary-700)" /> {profile.city}, {profile.state} ({profile.conference})
-                </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <BookOpen size={15} color="var(--primary-700)" /> {profile.baptismStatus} ({profile.baptismYear})
-                </span>
-              </div>
+              <p style={{ fontSize: '0.925rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '20px' }}>
+                {candidate.bioSnippet}
+              </p>
 
               {/* Action buttons */}
               <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                {!isOwnProfile ? (
-                  <button
-                    type="button"
-                    onClick={() => setInterestSent(true)}
-                    className={interestSent ? 'btn btn-outline' : 'btn btn-gold'}
-                  >
-                    {interestSent ? (
-                      <>
+                {!isMe && (
+                  <>
+                    {isMutual ? (
+                      <Link href="/messages" className="btn btn-primary">
+                        <MessageSquare size={16} /> Open Matrimonial Chat
+                      </Link>
+                    ) : alreadySent ? (
+                      <button type="button" disabled className="btn btn-outline">
                         <CheckCircle2 size={16} color="var(--success)" /> Interest Expressed
-                      </>
+                      </button>
                     ) : (
-                      <>
+                      <button
+                        type="button"
+                        onClick={() => setCustomMsgModal(true)}
+                        className="btn btn-gold"
+                      >
                         <Heart size={16} /> Express Matrimonial Interest
-                      </>
+                      </button>
                     )}
-                  </button>
-                ) : (
-                  <Link href="/profile" className="btn btn-outline">
-                    <Edit3 size={16} /> Edit My Profile Details
-                  </Link>
+                  </>
                 )}
 
                 <button
                   type="button"
-                  onClick={handleDownloadBiodata}
-                  disabled={downloading}
+                  onClick={() => setShowBiodataModal(true)}
                   className="btn btn-primary"
                 >
-                  <FileDown size={16} /> {downloading ? 'Preparing PDF...' : 'Download Printable Biodata (PDF)'}
+                  <FileDown size={16} /> View & Print Biodata
                 </button>
               </div>
             </div>
@@ -295,122 +212,236 @@ export default function ProfileDetailPage({ params }: { params: { id: string } }
         </div>
 
         {/* Detailed Profile Sections */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
           {/* Section 1: Spiritual Profile */}
-          <div className="card" style={{ padding: '28px' }}>
+          <div className="card" style={{ padding: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '18px' }}>
               <BookOpen size={20} color="var(--primary-800)" />
-              <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--primary-900)' }}>
+              <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--primary-900)' }}>
                 Adventist Faith & Church Life
               </h2>
             </div>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.9rem' }}>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.875rem' }}>
               <div>
-                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', fontWeight: 700 }}>BAPTISM & SABBATH</span>
-                <span style={{ fontWeight: 600 }}>{profile.baptismStatus} ({profile.baptismYear}) • {profile.sabbathObservance}</span>
+                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.725rem', fontWeight: 700, textTransform: 'uppercase' }}>
+                  BAPTISM & SABBATH
+                </span>
+                <span style={{ fontWeight: 600 }}>{candidate.baptismStatus} ({candidate.baptismYear}) • {candidate.sabbathObservance}</span>
               </div>
               <div>
-                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', fontWeight: 700 }}>CHURCH HIERARCHY</span>
-                <span style={{ fontWeight: 600 }}>{profile.division} → {profile.union} → {profile.conference}</span>
+                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.725rem', fontWeight: 700, textTransform: 'uppercase' }}>
+                  CHURCH HIERARCHY
+                </span>
+                <span style={{ fontWeight: 600 }}>{candidate.division}{candidate.conference ? ` → ${candidate.conference}` : ''}</span>
               </div>
               <div>
-                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', fontWeight: 700 }}>HOME CONGREGATION</span>
-                <span style={{ fontWeight: 600 }}>{profile.homeChurch}</span>
+                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.725rem', fontWeight: 700, textTransform: 'uppercase' }}>
+                  HOME CHURCH
+                </span>
+                <span style={{ fontWeight: 600 }}>{candidate.localChurch}</span>
               </div>
               <div>
-                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', fontWeight: 700 }}>ACTIVE MINISTRIES</span>
-                <span style={{ fontWeight: 600 }}>{profile.ministries.join(', ')}</span>
+                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.725rem', fontWeight: 700, textTransform: 'uppercase' }}>
+                  ACTIVE MINISTRIES
+                </span>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '4px' }}>
+                  {candidate.activeMinistries.map((m, idx) => (
+                    <span key={idx} className="badge badge-primary">{m}</span>
+                  ))}
+                </div>
               </div>
               <div>
-                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', fontWeight: 700 }}>FAVORITE SCRIPTURE</span>
+                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.725rem', fontWeight: 700, textTransform: 'uppercase' }}>
+                  FAVORITE SCRIPTURE
+                </span>
                 <p style={{ fontStyle: 'italic', color: 'var(--primary-800)', marginTop: '2px' }}>
-                  {profile.favoriteVerse}
+                  "{candidate.favoriteScripture}"
                 </p>
               </div>
             </div>
           </div>
 
           {/* Section 2: Lifestyle & Health */}
-          <div className="card" style={{ padding: '28px' }}>
+          <div className="card" style={{ padding: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '18px' }}>
               <Utensils size={20} color="var(--primary-800)" />
-              <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--primary-900)' }}>
+              <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--primary-900)' }}>
                 Lifestyle & Health Message
               </h2>
             </div>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.9rem' }}>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.875rem' }}>
               <div>
-                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', fontWeight: 700 }}>DIETARY PRACTICE</span>
-                <span style={{ fontWeight: 600 }}>{profile.diet}</span>
+                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.725rem', fontWeight: 700, textTransform: 'uppercase' }}>
+                  DIETARY PRACTICE
+                </span>
+                <span style={{ fontWeight: 600 }}>{candidate.diet}</span>
               </div>
               <div>
-                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', fontWeight: 700 }}>TEMPERANCE COMMITMENT</span>
-                <span style={{ fontWeight: 600 }}>{profile.temperance}</span>
+                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.725rem', fontWeight: 700, textTransform: 'uppercase' }}>
+                  TEMPERANCE & ABSTINENCE
+                </span>
+                <span style={{ fontWeight: 600 }}>{candidate.temperance}</span>
               </div>
               <div>
-                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', fontWeight: 700 }}>MUSIC, LEISURE & HOBBIES</span>
-                <span style={{ fontWeight: 600 }}>{profile.musicAndHobbies}</span>
+                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.725rem', fontWeight: 700, textTransform: 'uppercase' }}>
+                  MUSIC & LEISURE
+                </span>
+                <span style={{ fontWeight: 600 }}>{candidate.musicPreferences}</span>
               </div>
               <div>
-                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', fontWeight: 700 }}>CHRISTIAN MODESTY</span>
-                <span style={{ fontWeight: 600 }}>{profile.modestyValues}</span>
+                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.725rem', fontWeight: 700, textTransform: 'uppercase' }}>
+                  RELOCATION WILLINGNESS
+                </span>
+                <span style={{ fontWeight: 600 }}>{candidate.relocationPreference}</span>
               </div>
             </div>
           </div>
 
           {/* Section 3: Education & Profession */}
-          <div className="card" style={{ padding: '28px' }}>
+          <div className="card" style={{ padding: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '18px' }}>
               <GraduationCap size={20} color="var(--primary-800)" />
-              <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--primary-900)' }}>
+              <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--primary-900)' }}>
                 Education & Vocation
               </h2>
             </div>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.9rem' }}>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.875rem' }}>
               <div>
-                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', fontWeight: 700 }}>DEGREE & ALMA MATER</span>
-                <span style={{ fontWeight: 600 }}>{profile.degree}</span>
+                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.725rem', fontWeight: 700, textTransform: 'uppercase' }}>
+                  HIGHEST DEGREE
+                </span>
+                <span style={{ fontWeight: 600 }}>{candidate.highestEducation}</span>
               </div>
+              {candidate.institution && (
+                <div>
+                  <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.725rem', fontWeight: 700, textTransform: 'uppercase' }}>
+                    ALMA MATER
+                  </span>
+                  <span style={{ fontWeight: 600 }}>{candidate.institution}</span>
+                </div>
+              )}
               <div>
-                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', fontWeight: 700 }}>OCCUPATION & EMPLOYER</span>
-                <span style={{ fontWeight: 600 }}>{profile.occupation} at {profile.institutionOrEmployer}</span>
-              </div>
-              <div>
-                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', fontWeight: 700 }}>RELOCATION READINESS</span>
-                <span style={{ fontWeight: 600 }}>{profile.relocationPreference}</span>
+                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.725rem', fontWeight: 700, textTransform: 'uppercase' }}>
+                  OCCUPATION
+                </span>
+                <span style={{ fontWeight: 600 }}>{candidate.occupation}</span>
               </div>
             </div>
           </div>
 
-          {/* Section 4: Family Background */}
-          <div className="card" style={{ padding: '28px' }}>
+          {/* Section 4: Family Background & Pastoral Endorsement */}
+          <div className="card" style={{ padding: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '18px' }}>
               <Users size={20} color="var(--primary-800)" />
-              <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--primary-900)' }}>
-                Family Heritage & Values
+              <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--primary-900)' }}>
+                Family Heritage & Pastoral Reference
               </h2>
             </div>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.9rem' }}>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.875rem' }}>
               <div>
-                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', fontWeight: 700 }}>ADVENTIST HERITAGE</span>
-                <span style={{ fontWeight: 600 }}>{profile.familyHeritage}</span>
+                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.725rem', fontWeight: 700, textTransform: 'uppercase' }}>
+                  ADVENTIST HERITAGE
+                </span>
+                <span style={{ fontWeight: 600 }}>{candidate.familyBackground.heritage}</span>
               </div>
               <div>
-                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', fontWeight: 700 }}>PARENTS & SIBLINGS</span>
-                <span style={{ fontWeight: 600 }}>{profile.parentsSiblings}</span>
+                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.725rem', fontWeight: 700, textTransform: 'uppercase' }}>
+                  FAMILY TRADITIONS
+                </span>
+                <span style={{ fontWeight: 600 }}>{candidate.familyBackground.traditions}</span>
               </div>
-              <div>
-                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', fontWeight: 700 }}>FAMILY ALTAR & TRADITIONS</span>
-                <span style={{ fontWeight: 600 }}>{profile.homeTraditions}</span>
-              </div>
+              {candidate.pastorReference && (
+                <div style={{ marginTop: '8px', padding: '12px', backgroundColor: 'var(--accent-gold-light)', borderRadius: 'var(--radius-sm)', border: '1px solid #EAD8B1' }}>
+                  <span style={{ color: '#8C6D2B', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', fontWeight: 700 }}>
+                    <ShieldCheck size={14} /> PASTORAL ENDORSEMENT
+                  </span>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--primary-900)', fontStyle: 'italic', marginTop: '4px' }}>
+                    "{candidate.pastorReference.notes}"
+                  </p>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginTop: '4px' }}>
+                    — {candidate.pastorReference.name} ({candidate.pastorReference.church})
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Express Interest Custom Message Modal */}
+      {customMsgModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(10, 25, 47, 0.7)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+          }}
+          onClick={() => setCustomMsgModal(false)}
+        >
+          <div
+            className="card animate-fade"
+            style={{ width: '100%', maxWidth: '480px', padding: '32px', backgroundColor: '#FFFFFF' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+              <Heart size={22} color="var(--accent-gold)" fill="var(--accent-gold)" />
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-900)' }}>
+                Express Interest to {candidate.name}
+              </h3>
+            </div>
+
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: 1.5 }}>
+              Share a respectful, faith-centered introductory note. Once mutual interest is confirmed, direct private messaging unlocks.
+            </p>
+
+            <form onSubmit={handleSendInterest}>
+              <textarea
+                rows={4}
+                value={introText}
+                onChange={(e) => setIntroText(e.target.value)}
+                placeholder={`Greetings ${candidate.name}, I reviewed your faith profile and appreciated your dedication to Christ and church ministry...`}
+                className="input-control"
+                style={{ resize: 'none', marginBottom: '20px', fontSize: '0.875rem' }}
+              />
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => setCustomMsgModal(false)}
+                  className="btn btn-outline"
+                  style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-gold"
+                  style={{ padding: '8px 18px', fontSize: '0.85rem' }}
+                >
+                  <Heart size={15} /> Send Expression
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Printable Biodata Modal */}
+      <BiodataModal
+        candidate={candidate}
+        isOpen={showBiodataModal}
+        onClose={() => setShowBiodataModal(false)}
+      />
     </div>
   );
 }

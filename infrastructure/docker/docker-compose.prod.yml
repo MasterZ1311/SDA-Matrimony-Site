@@ -1,0 +1,127 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: sda_matrimony_postgres_prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DATABASE_USER:-sda_matrimony_user}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-sda_matrimony_secure_password}
+      POSTGRES_DB: ${DATABASE_NAME:-sda_matrimony_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER:-sda_matrimony_user} -d ${DATABASE_NAME:-sda_matrimony_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: sda_matrimony_redis_prod
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_prod_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: sda_matrimony_minio_prod
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_prod_data:/data
+
+  api-core:
+    build:
+      context: ../..
+      dockerfile: apps/api-core/Dockerfile
+    container_name: sda_matrimony_api_core_prod
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: production
+      API_PORT: 4000
+      API_PREFIX: api/v1
+      DATABASE_URL: postgresql://${DATABASE_USER:-sda_matrimony_user}:${DATABASE_PASSWORD:-sda_matrimony_secure_password}@postgres:5432/${DATABASE_NAME:-sda_matrimony_db}?schema=public
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  api-realtime:
+    build:
+      context: ../..
+      dockerfile: apps/api-realtime/Dockerfile
+    container_name: sda_matrimony_api_realtime_prod
+    restart: unless-stopped
+    ports:
+      - "4001:4001"
+    environment:
+      NODE_ENV: production
+      WS_PORT: 4001
+      DATABASE_URL: postgresql://${DATABASE_USER:-sda_matrimony_user}:${DATABASE_PASSWORD:-sda_matrimony_secure_password}@postgres:5432/${DATABASE_NAME:-sda_matrimony_db}?schema=public
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  ai-engine:
+    build:
+      context: ../../apps/ai-engine
+      dockerfile: Dockerfile
+    container_name: sda_matrimony_ai_engine_prod
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      PORT: 8000
+      AI_SERVICE_SECRET: ${AI_SERVICE_SECRET}
+      ALLOWED_ORIGINS: http://localhost:3000,http://localhost:4000,http://localhost:4001
+
+  web:
+    build:
+      context: ../..
+      dockerfile: apps/web/Dockerfile
+    container_name: sda_matrimony_web_prod
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000/api/v1}
+      NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-ws://localhost:4001}
+    depends_on:
+      - api-core
+      - api-realtime
+
+volumes:
+  postgres_prod_data:
+  redis_prod_data:
+  minio_prod_data:

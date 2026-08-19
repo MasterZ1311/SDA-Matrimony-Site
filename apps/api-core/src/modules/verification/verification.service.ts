@@ -15,6 +15,14 @@ export class VerificationService {
     conferenceName: string;
     referenceNotes?: string;
   }) {
+    const profile = await this.prisma.profile.findUnique({
+      where: { userId },
+    });
+
+    if (!profile) {
+      throw new NotFoundException('Member profile must be created prior to submitting pastoral verification.');
+    }
+
     const token = crypto.randomBytes(32).toString('hex');
 
     const verification = await this.prisma.pastoralVerification.create({
@@ -37,9 +45,8 @@ export class VerificationService {
     });
 
     return {
-      message: 'Pastoral verification submitted successfully. Verification token generated.',
+      message: 'Pastoral verification submitted successfully. An endorsement request has been dispatched to your pastor.',
       verificationId: verification.id,
-      verificationToken: token,
     };
   }
 
@@ -110,6 +117,11 @@ export class VerificationService {
       await this.prisma.user.update({
         where: { id: verification.userId },
         data: { role: UserRole.VERIFIED_MEMBER },
+      });
+    } else {
+      await this.prisma.user.update({
+        where: { id: verification.userId },
+        data: { role: UserRole.MEMBER },
       });
     }
 

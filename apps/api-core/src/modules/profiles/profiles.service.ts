@@ -53,6 +53,8 @@ export class ProfilesService {
       data: {
         firstName: data.firstName !== undefined ? data.firstName : profile.firstName,
         lastName: data.lastName !== undefined ? data.lastName : profile.lastName,
+        gender: data.gender !== undefined ? data.gender : profile.gender,
+        dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : profile.dateOfBirth,
         heightCm: data.heightCm !== undefined ? data.heightCm : profile.heightCm,
         maritalStatus: data.maritalStatus !== undefined ? data.maritalStatus : profile.maritalStatus,
         hasChildren: data.hasChildren !== undefined ? data.hasChildren : profile.hasChildren,

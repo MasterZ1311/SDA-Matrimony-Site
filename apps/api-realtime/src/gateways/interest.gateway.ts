@@ -11,7 +11,10 @@ import { PrismaClient, InterestStatus } from '@prisma/client';
 const prisma = new PrismaClient();
 
 @WebSocketGateway({
-  cors: { origin: '*' },
+  cors: {
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    credentials: true,
+  },
   namespace: '/',
 })
 export class InterestGateway {
@@ -26,6 +29,19 @@ export class InterestGateway {
     const senderId = client.data.userId;
     if (!senderId) return { error: 'Unauthorized' };
 
+    if (senderId === data.receiverId) {
+      return { error: 'Cannot send matrimonial interest to yourself.' };
+    }
+
+    const receiver = await prisma.user.findUnique({
+      where: { id: data.receiverId },
+      include: { profile: true },
+    });
+
+    if (!receiver || !receiver.profile) {
+      return { error: 'Candidate profile does not exist.' };
+    }
+
     const interest = await prisma.interestRequest.upsert({
       where: {
         senderId_receiverId: {
@@ -35,16 +51,17 @@ export class InterestGateway {
       },
       update: {
         status: InterestStatus.PENDING,
-        introMessage: data.introMessage,
+        introMessage: data.introMessage?.trim() || 'Greetings, I would be honored to connect and discuss our Christian journey.',
       },
       create: {
         senderId,
         receiverId: data.receiverId,
         status: InterestStatus.PENDING,
-        introMessage: data.introMessage,
+        introMessage: data.introMessage?.trim() || 'Greetings, I would be honored to connect and discuss our Christian journey.',
       },
       include: {
         sender: { include: { profile: true } },
+        receiver: { include: { profile: true } },
       },
     });
 
@@ -63,6 +80,19 @@ export class InterestGateway {
   ) {
     const userId = client.data.userId;
     if (!userId) return { error: 'Unauthorized' };
+
+    const interest = await prisma.interestRequest.findUnique({
+      where: { id: data.interestId },
+    });
+
+    if (!interest) {
+      return { error: 'Interest request not found.' };
+    }
+
+    // Strict Authorization: Only the receiver can accept or decline
+    if (interest.receiverId !== userId) {
+      return { error: 'Forbidden: You can only respond to interest requests sent to you' };
+    }
 
     const updated = await prisma.interestRequest.update({
       where: { id: data.interestId },
