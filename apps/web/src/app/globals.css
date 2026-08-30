@@ -1,42 +1,60 @@
 :root {
+  /* Shaadi.com & SDA Matrimony Hybrid Color Palette */
   --primary-900: #0A192F;
   --primary-800: #0F2942;
   --primary-700: #1B3B6F;
-  --primary-600: #285396;
+  --primary-600: #2563EB;
   --primary-100: #E6EEF8;
   --primary-50: #F0F5FA;
 
+  /* Shaadi Iconic High-Conversion Crimson & Coral */
+  --shaadi-crimson: #E53935;
+  --shaadi-crimson-hover: #D32F2F;
+  --shaadi-crimson-light: #FFEBEE;
+  --shaadi-coral: #FF5A60;
+  --shaadi-teal: #008489;
+  --shaadi-teal-light: #E0F2F1;
+
+  /* Adventist Regal Gold */
   --accent-gold: #C5A059;
   --accent-gold-hover: #B38E46;
-  --accent-gold-light: #FBF6EC;
+  --accent-gold-light: #FDF8ED;
+  --accent-gold-border: #E8D5A7;
 
-  --bg-page: #F8FAFC;
+  /* Backgrounds & Borders */
+  --bg-page: #F4F7F9;
   --bg-card: #FFFFFF;
   --border-subtle: #E2E8F0;
-  --border-focus: #1B3B6F;
+  --border-hover: #CBD5E1;
+  --border-focus: #E53935;
 
-  --text-main: #0F172A;
+  /* Typography */
+  --text-main: #1E293B;
   --text-secondary: #475569;
-  --text-muted: #94A3B8;
+  --text-muted: #64748B;
 
-  --success: #16A34A;
-  --success-light: #DCFCE7;
+  /* Status Colors */
+  --success: #059669;
+  --success-light: #D1FAE5;
   --warning: #D97706;
   --warning-light: #FEF3C7;
   --danger: #DC2626;
   --danger-light: #FEE2E2;
 
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.05);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.04);
-  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.04);
+  /* Elevation Shadows */
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.06), 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-hover: 0 8px 24px rgba(15, 41, 66, 0.12);
 
+  /* Border Radii */
   --radius-sm: 6px;
   --radius-md: 10px;
-  --radius-lg: 16px;
+  --radius-lg: 14px;
   --radius-full: 9999px;
 
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
 * {
@@ -60,7 +78,7 @@ a {
   text-decoration: none;
 }
 
-/* Custom Components & Utilities */
+/* Custom Containers */
 .container {
   width: 100%;
   max-width: 1240px;
@@ -74,24 +92,39 @@ a {
   }
 }
 
+/* Buttons */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 10px 20px;
+  padding: 10px 22px;
   font-size: 0.925rem;
   font-weight: 600;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
   border: 1px solid transparent;
   cursor: pointer;
-  transition: all 0.2s ease-in-out;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   text-decoration: none;
+  line-height: 1.2;
 }
 
 .btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* Shaadi Iconic Connect / Express Interest Button */
+.btn-connect {
+  background: linear-gradient(135deg, #E53935 0%, #FF5A60 100%);
+  color: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(229, 57, 53, 0.28);
+}
+
+.btn-connect:hover:not(:disabled) {
+  background: linear-gradient(135deg, #D32F2F 0%, #E53935 100%);
+  box-shadow: 0 6px 16px rgba(229, 57, 53, 0.38);
+  transform: translateY(-1px);
 }
 
 .btn-primary {
@@ -102,74 +135,113 @@ a {
 .btn-primary:hover:not(:disabled) {
   background-color: var(--primary-700);
   box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
 }
 
 .btn-gold {
-  background-color: var(--accent-gold);
+  background: linear-gradient(135deg, #C5A059 0%, #D4AF37 100%);
   color: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(197, 160, 89, 0.3);
 }
 
 .btn-gold:hover:not(:disabled) {
-  background-color: var(--accent-gold-hover);
-  box-shadow: var(--shadow-md);
+  background: linear-gradient(135deg, #B38E46 0%, #C5A059 100%);
+  box-shadow: 0 6px 16px rgba(197, 160, 89, 0.4);
+  transform: translateY(-1px);
 }
 
 .btn-outline {
-  background-color: transparent;
+  background-color: #FFFFFF;
   border-color: var(--border-subtle);
   color: var(--text-main);
 }
 
 .btn-outline:hover:not(:disabled) {
   background-color: var(--primary-50);
-  border-color: var(--primary-600);
+  border-color: var(--primary-700);
+  color: var(--primary-800);
 }
 
+.btn-outline-crimson {
+  background-color: #FFFFFF;
+  border-color: var(--shaadi-crimson);
+  color: var(--shaadi-crimson);
+}
+
+.btn-outline-crimson:hover:not(:disabled) {
+  background-color: var(--shaadi-crimson-light);
+}
+
+/* Cards */
 .card {
   background-color: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: all 0.25s ease;
 }
 
 .card:hover {
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-hover);
+  border-color: #CBD5E1;
 }
 
+/* Badges */
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   padding: 4px 10px;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
   border-radius: var(--radius-full);
+  letter-spacing: 0.02em;
+}
+
+.badge-verified {
+  background-color: #ECFDF5;
+  color: #059669;
+  border: 1px solid #A7F3D0;
 }
 
 .badge-gold {
   background-color: var(--accent-gold-light);
   color: #8C6D2B;
-  border: 1px solid #EAD8B1;
+  border: 1px solid var(--accent-gold-border);
 }
 
-.badge-verified {
-  background-color: var(--success-light);
-  color: var(--success);
-  border: 1px solid #86EFAC;
+.badge-crimson {
+  background-color: var(--shaadi-crimson-light);
+  color: var(--shaadi-crimson);
+  border: 1px solid #FFCDD2;
 }
 
 .badge-primary {
-  background-color: var(--primary-100);
-  color: var(--primary-700);
+  background-color: #EFF6FF;
+  color: #1D4ED8;
+  border: 1px solid #BFDBFE;
 }
 
+/* Shaadi-Style Fact Pill */
+.fact-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background-color: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: var(--radius-sm);
+  font-size: 0.825rem;
+  color: var(--text-secondary);
+}
+
+/* Form Controls */
 .input-control {
   width: 100%;
-  padding: 10px 14px;
+  padding: 11px 16px;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  font-size: 0.95rem;
+  font-size: 0.925rem;
   background-color: #FFFFFF;
   color: var(--text-main);
   outline: none;
@@ -177,21 +249,8 @@ a {
 }
 
 .input-control:focus {
-  border-color: var(--primary-700);
-  box-shadow: 0 0 0 3px rgba(27, 59, 111, 0.12);
-}
-
-/* Skeleton Loading Animation */
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-.skeleton {
-  background: linear-gradient(90deg, #f0f3f6 25%, #e6eaf0 37%, #f0f3f6 63%);
-  background-size: 400% 100%;
-  animation: shimmer 1.4s ease infinite;
-  border-radius: var(--radius-sm);
+  border-color: var(--shaadi-crimson);
+  box-shadow: 0 0 0 3px rgba(229, 57, 53, 0.12);
 }
 
 /* Animations */
@@ -204,7 +263,19 @@ a {
   animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Responsive Helpers */
+/* Responsive Grid Layouts */
+@media (max-width: 900px) {
+  .discover-layout {
+    grid-template-columns: 1fr !important;
+  }
+  .discover-sidebar {
+    display: none;
+  }
+  .discover-sidebar.active {
+    display: block !important;
+  }
+}
+
 @media (max-width: 768px) {
   .nav-desktop {
     display: none !important;
@@ -212,21 +283,12 @@ a {
   .nav-mobile-toggle {
     display: flex !important;
   }
-  .discover-layout {
-    grid-template-columns: 1fr !important;
-  }
-  .discover-sidebar {
-    position: static !important;
-  }
   .chat-layout {
     grid-template-columns: 1fr !important;
     height: auto !important;
     min-height: 600px !important;
   }
-  .hero-title {
-    font-size: 2.2rem !important;
-  }
-  .biodata-grid {
+  .hero-quicksearch {
     grid-template-columns: 1fr !important;
   }
 }
@@ -237,21 +299,5 @@ a {
   }
   .nav-mobile-toggle {
     display: none !important;
-  }
-}
-
-/* Print Styles for Biodata */
-@media print {
-  body {
-    background: #FFF !important;
-    color: #000 !important;
-  }
-  header, footer, .no-print, .btn, .toast-container {
-    display: none !important;
-  }
-  .card {
-    border: none !important;
-    box-shadow: none !important;
-    padding: 0 !important;
   }
 }

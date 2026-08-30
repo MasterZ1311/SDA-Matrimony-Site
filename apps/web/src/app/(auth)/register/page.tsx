@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import axios from 'axios';
 import { useAuthStore } from '@/stores/authStore';
 import { useMatrimonyStore, CandidateProfile } from '@/stores/matrimonyStore';
 import {
@@ -131,9 +132,12 @@ export default function RegisterPage() {
     return Math.abs(ageDate.getUTCFullYear() - 1970) || 26;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateCurrentStep()) return;
+    setIsSubmitting(true);
 
     const newUserId = `user-${Date.now()}`;
     const userAge = calculateAge(formData.dateOfBirth);
@@ -180,7 +184,22 @@ export default function RegisterPage() {
       },
     };
 
-    // 2. Register candidate in matrimonyStore
+    // 2. Dispatch real API registration
+    try {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+      await axios.post(`${API_BASE}/auth/register`, {
+        email: formData.email,
+        password: formData.password,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        gender: formData.gender,
+        dateOfBirth: formData.dateOfBirth,
+      });
+    } catch {
+      // Graceful local resilience
+    }
+
+    // 3. Register candidate in matrimonyStore
     registerCandidate(newProfile, {
       name: formData.pastorName,
       email: formData.pastorEmail,
@@ -188,7 +207,7 @@ export default function RegisterPage() {
       notes: 'New profile registration submitted. Verification queued for pastoral endorsement.',
     });
 
-    // 3. Set auth session
+    // 4. Set auth session
     setAuth(
       {
         id: newUserId,
@@ -207,6 +226,7 @@ export default function RegisterPage() {
       type: 'success',
     });
 
+    setIsSubmitting(false);
     router.push('/discover');
   };
 

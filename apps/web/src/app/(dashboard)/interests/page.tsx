@@ -185,10 +185,10 @@ export default function InterestsPage() {
                                 </button>
                                 <button
                                   onClick={() => updateInterestStatus(item.id, 'ACCEPTED')}
-                                  className="btn btn-gold"
+                                  className="btn btn-connect"
                                   style={{ padding: '6px 16px', fontSize: '0.825rem' }}
                                 >
-                                  <Check size={14} /> Accept & Unlock Chat
+                                  <Check size={14} /> Accept & Connect
                                 </button>
                               </>
                             ) : item.status === 'ACCEPTED' ? (
@@ -198,7 +198,7 @@ export default function InterestsPage() {
                                 </span>
                                 <Link
                                   href="/messages"
-                                  className="btn btn-primary"
+                                  className="btn btn-connect"
                                   style={{ padding: '6px 16px', fontSize: '0.825rem' }}
                                 >
                                   <MessageSquare size={14} /> Open Private Chat

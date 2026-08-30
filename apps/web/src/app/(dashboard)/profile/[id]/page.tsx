@@ -180,7 +180,7 @@ export default function ProfileDetailPage({ params }: { params: { id: string } }
                 {!isMe && (
                   <>
                     {isMutual ? (
-                      <Link href="/messages" className="btn btn-primary">
+                      <Link href="/messages" className="btn btn-connect">
                         <MessageSquare size={16} /> Open Matrimonial Chat
                       </Link>
                     ) : alreadySent ? (
@@ -191,9 +191,9 @@ export default function ProfileDetailPage({ params }: { params: { id: string } }
                       <button
                         type="button"
                         onClick={() => setCustomMsgModal(true)}
-                        className="btn btn-gold"
+                        className="btn btn-connect"
                       >
-                        <Heart size={16} /> Express Matrimonial Interest
+                        <Heart size={16} fill="#FFFFFF" /> Connect Now (Express Interest)
                       </button>
                     )}
                   </>
@@ -202,7 +202,7 @@ export default function ProfileDetailPage({ params }: { params: { id: string } }
                 <button
                   type="button"
                   onClick={() => setShowBiodataModal(true)}
-                  className="btn btn-primary"
+                  className="btn btn-outline"
                 >
                   <FileDown size={16} /> View & Print Biodata
                 </button>

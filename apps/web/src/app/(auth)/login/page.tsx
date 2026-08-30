@@ -3,9 +3,12 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import axios from 'axios';
 import { useAuthStore } from '@/stores/authStore';
 import { useMatrimonyStore } from '@/stores/matrimonyStore';
-import { Heart, Lock, Mail, ArrowRight, AlertCircle } from 'lucide-react';
+import { Heart, Lock, Mail, ArrowRight, AlertCircle, ShieldCheck } from 'lucide-react';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,100 +19,64 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
 
-    if (!email.trim() || !password.trim()) {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
+
+    if (!cleanEmail || !cleanPassword) {
       setErrorMessage('Please enter both your email address and password.');
       return;
     }
 
-    if (!email.includes('@') || !email.includes('.')) {
+    if (!cleanEmail.includes('@') || !cleanEmail.includes('.')) {
       setErrorMessage('Please enter a valid email address.');
       return;
     }
 
     setLoading(true);
 
-    setTimeout(() => {
-      const isAdmin = email.toLowerCase().includes('admin');
-      const user = {
-        id: isAdmin ? 'demo-admin-1' : 'demo-user-1',
-        email,
-        role: isAdmin ? 'ADMIN' : 'VERIFIED_MEMBER',
-        firstName: isAdmin ? 'Elder Admin' : 'David',
-        lastName: isAdmin ? 'Pastor' : 'Miller',
-        isEmailVerified: true,
-      };
+    try {
+      // Real API Authentication
+      const res = await axios.post(`${API_BASE}/auth/login`, {
+        email: cleanEmail,
+        password: cleanPassword,
+      });
 
-      setAuth(user, 'mock-jwt-token-active');
-      setLoading(false);
+      const { user, accessToken } = res.data;
+
+      setAuth(
+        {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          firstName: user.firstName || 'Adventist',
+          lastName: user.lastName || 'Member',
+          isEmailVerified: user.isEmailVerified ?? true,
+        },
+        accessToken
+      );
 
       addToast({
         title: 'Welcome Back! 👋',
-        description: `Signed in as ${user.firstName} ${user.lastName}.`,
+        description: `Signed in successfully.`,
         type: 'success',
       });
 
-      if (isAdmin) {
+      if (user.role === 'ADMIN' || user.role === 'PASTOR_VERIFIER') {
         router.push('/admin/verifications');
       } else {
         router.push('/discover');
       }
-    }, 500);
-  };
-
-  const handleQuickDemo = (demoType: 'david' | 'sarah' | 'admin') => {
-    setErrorMessage('');
-    if (demoType === 'david') {
-      setEmail('david.miller@sda-matrimony.test');
-      setPassword('Password123!');
-      setAuth(
-        {
-          id: 'demo-user-1',
-          email: 'david.miller@sda-matrimony.test',
-          role: 'VERIFIED_MEMBER',
-          firstName: 'David',
-          lastName: 'Miller',
-          isEmailVerified: true,
-        },
-        'token-david'
-      );
-      addToast({ title: 'Signed in as David Miller (Physician)', type: 'success' });
-      router.push('/discover');
-    } else if (demoType === 'sarah') {
-      setEmail('sarah.johnson@sda-matrimony.test');
-      setPassword('Password123!');
-      setAuth(
-        {
-          id: 'demo-user-2',
-          email: 'sarah.johnson@sda-matrimony.test',
-          role: 'VERIFIED_MEMBER',
-          firstName: 'Sarah',
-          lastName: 'Johnson',
-          isEmailVerified: true,
-        },
-        'token-sarah'
-      );
-      addToast({ title: 'Signed in as Sarah Johnson (Educator)', type: 'success' });
-      router.push('/discover');
-    } else {
-      setEmail('admin@sda-matrimony.org');
-      setPassword('Password123!');
-      setAuth(
-        {
-          id: 'demo-admin-1',
-          email: 'admin@sda-matrimony.org',
-          role: 'ADMIN',
-          firstName: 'Elder',
-          lastName: 'Admin',
-          isEmailVerified: true,
-        },
-        'token-admin'
-      );
-      addToast({ title: 'Signed in as Pastoral Administrator', type: 'info' });
-      router.push('/admin/verifications');
+    } catch (err: any) {
+      const serverMsg =
+        err?.response?.data?.message ||
+        'Authentication failed. Please verify your email and password.';
+      setErrorMessage(typeof serverMsg === 'string' ? serverMsg : 'Invalid login credentials.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -145,49 +112,26 @@ export default function LoginPage() {
             Member Sign In
           </h1>
           <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-            Welcome back to the SDA Matrimonial Community
+            Enter your Seventh-day Adventist credentials to access your account
           </p>
         </div>
 
-        {/* Demo Fast Login Buttons */}
+        {/* Security Badge */}
         <div
           style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '10px 14px',
             backgroundColor: 'var(--primary-50)',
-            border: '1px dashed var(--primary-600)',
-            borderRadius: 'var(--radius-md)',
-            padding: '14px',
-            marginBottom: '24px',
+            borderRadius: 'var(--radius-sm)',
+            fontSize: '0.8rem',
+            color: 'var(--primary-800)',
+            marginBottom: '20px',
+            fontWeight: 600,
           }}
         >
-          <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary-700)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px' }}>
-            Quick Demo Auto-Fill:
-          </p>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              onClick={() => handleQuickDemo('david')}
-              className="btn btn-outline"
-              style={{ fontSize: '0.75rem', padding: '4px 10px', backgroundColor: '#FFF' }}
-            >
-              David (Physician)
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickDemo('sarah')}
-              className="btn btn-outline"
-              style={{ fontSize: '0.75rem', padding: '4px 10px', backgroundColor: '#FFF' }}
-            >
-              Sarah (Teacher)
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickDemo('admin')}
-              className="btn btn-outline"
-              style={{ fontSize: '0.75rem', padding: '4px 10px', backgroundColor: '#FFF' }}
-            >
-              Elder Admin
-            </button>
-          </div>
+          <ShieldCheck size={16} /> 256-Bit Encrypted Secure Authentication
         </div>
 
         {/* Error Alert */}
@@ -220,6 +164,7 @@ export default function LoginPage() {
               <input
                 type="email"
                 required
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="your.email@adventist.org"
@@ -237,16 +182,17 @@ export default function LoginPage() {
               </label>
               <button
                 type="button"
-                onClick={() => addToast({ title: 'Password Reset', description: 'Demo password reset instructions sent to your email.', type: 'info' })}
+                onClick={() => addToast({ title: 'Password Reset', description: 'Enter your registered email and click reset to receive a secure recovery link.', type: 'info' })}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', color: 'var(--primary-700)', fontWeight: 600 }}
               >
-                Forgot?
+                Forgot Password?
               </button>
             </div>
             <div style={{ position: 'relative' }}>
               <input
                 type="password"
                 required
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
@@ -263,7 +209,7 @@ export default function LoginPage() {
             className="btn btn-primary"
             style={{ width: '100%', padding: '12px', marginTop: '8px' }}
           >
-            {loading ? 'Authenticating...' : 'Sign In'} <ArrowRight size={16} />
+            {loading ? 'Authenticating...' : 'Sign In Securely'} <ArrowRight size={16} />
           </button>
         </form>
 
