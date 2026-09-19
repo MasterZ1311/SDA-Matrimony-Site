@@ -104,6 +104,7 @@ model User {
   role                  UserRole  @default(MEMBER)
   isEmailVerified       Boolean   @default(false)
   emailVerifyToken      String?
+  emailVerifyExpires    DateTime?
   passwordResetToken    String?
   passwordResetExpires  DateTime?
   lastLoginAt           DateTime?
