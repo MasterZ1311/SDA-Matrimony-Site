@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SDA Matrimony - DigiLocker Verification</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 760px;
+      margin: 60px auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    button {
+      padding: 12px 18px;
+      border: 0;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    #status {
+      margin-top: 20px;
+      padding: 14px;
+      border-radius: 8px;
+      background: #f2f2f2;
+    }
+  </style>
+</head>
+<body>
+  <h1>SDA Matrimony</h1>
+  <h2>DigiLocker Document Verification</h2>
+
+  <p>
+    This module is designed for document verification through the
+    DigiLocker Requester/EntityLocker authorization flow.
+  </p>
+
+  <button id="verifyBtn">Verify with DigiLocker</button>
+  <div id="status">Demo mode can be used before live credentials are configured.</div>
+
+  <script>
+    document.getElementById("verifyBtn").addEventListener("click", async () => {
+      const status = document.getElementById("status");
+
+      try {
+        const response = await fetch("http://localhost:8000/auth/digilocker/start");
+        const data = await response.json();
+
+        if (data.demo_mode) {
+          status.textContent = data.message;
+          return;
+        }
+
+        window.location.href = data.url;
+      } catch (error) {
+        status.textContent = "Backend is not running. Start the FastAPI server first.";
+      }
+    });
+  </script>
+</body>
+</html>
