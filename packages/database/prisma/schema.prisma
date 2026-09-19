@@ -111,6 +111,9 @@ model User {
   conversationsAsUser2  Conversation[]        @relation("User2Conversations")
   chatMessages          ChatMessage[]
   pastoralVerifications PastoralVerification[]
+  createdMatchSuggestions   MatchSuggestion[]     @relation("AdminMatchSuggestions")
+  receivedMatchSuggestions  MatchSuggestion[]     @relation("UserMatchSuggestions")
+  suggestedAsMatch          MatchSuggestion[]     @relation("SuggestedMatchCandidates")
 
   @@index([email])
   @@index([role])
@@ -348,4 +351,28 @@ model PastoralVerification {
 
   @@index([userId, status])
   @@index([verificationToken])
+}
+
+enum MatchSuggestionStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+model MatchSuggestion {
+  id              String                @id @default(uuid())
+  adminId         String
+  admin           User                  @relation("AdminMatchSuggestions", fields: [adminId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User                  @relation("UserMatchSuggestions", fields: [userId], references: [id], onDelete: Cascade)
+  suggestedUserId String
+  suggestedUser   User                  @relation("SuggestedMatchCandidates", fields: [suggestedUserId], references: [id], onDelete: Cascade)
+  status          MatchSuggestionStatus @default(PENDING)
+  adminNote       String?               @db.Text
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  @@index([userId, status])
+  @@index([adminId])
+  @@index([suggestedUserId])
 }

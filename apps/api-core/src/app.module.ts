@@ -10,6 +10,7 @@ import { BiodataModule } from './modules/biodata/biodata.module';
 import { InterestsModule } from './modules/interests/interests.module';
 import { MessagesModule } from './modules/messages/messages.module';
 import { MailModule } from './modules/mail/mail.module';
+import { MatchmakingModule } from './modules/matchmaking/matchmaking.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { MailModule } from './modules/mail/mail.module';
     InterestsModule,
     MessagesModule,
     MailModule,
+    MatchmakingModule,
   ],
 })
 export class AppModule {}
