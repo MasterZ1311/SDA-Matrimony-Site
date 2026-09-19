@@ -50,4 +50,14 @@ export class MessagesController {
   ) {
     return this.messagesService.sendMessage(userId, conversationId, dto.content);
   }
+
+  @Get('icebreakers/:targetUserId')
+  @ApiOperation({ summary: 'Generate faith-centered icebreakers and conversation starters for candidate' })
+  async getIcebreakers(
+    @CurrentUser('id') userId: string,
+    @Param('targetUserId') targetUserId: string,
+  ) {
+    return this.messagesService.getIcebreakers(userId, targetUserId);
+  }
 }
+

@@ -25,11 +25,10 @@ For in-depth architectural breakdowns, setup procedures, and deployment guides, 
 - **[Technology Stack Specifications (docs/TECH_STACK.md)](file:///e:/Github/Matrimony%20Project/docs/TECH_STACK.md)**: Exhaustive breakdown of frameworks, libraries, database engines, caching layers, and tooling across the entire monorepo.
 - **[Platform Features and Domain Specs (docs/FEATURES.md)](file:///e:/Github/Matrimony%20Project/docs/FEATURES.md)**: Comprehensive catalog of faith profiling, church hierarchy integration, pastoral verification, AI matching, and privacy controls.
 - **[Local Development and Onboarding Guide (docs/GETTING_STARTED.md)](file:///e:/Github/Matrimony%20Project/docs/GETTING_STARTED.md)**: Step-by-step instructions for configuring local environments, running Docker infrastructure, applying migrations, seeding data, and executing services.
-- **[3-Developer Execution & Git Workflow Guide (docs/THREE_DEVELOPER_EXECUTION_AND_GIT_WORKFLOW.md)](file:///e:/Github/Matrimony%20Project/docs/THREE_DEVELOPER_EXECUTION_AND_GIT_WORKFLOW.md)**: Parallel work division, developer-specific checklists, PR rules, and pre-push verification.
+- **[API Specification (docs/API_SPECIFICATION.md)](file:///e:/Github/Matrimony%20Project/docs/API_SPECIFICATION.md)**: Comprehensive REST and WebSocket interface definitions, payload schemas, query parameters, authentication headers, and Socket.IO events.
 - **[Production Readiness and Deployment Guide (docs/PRODUCTION_READINESS.md)](file:///e:/Github/Matrimony%20Project/docs/PRODUCTION_READINESS.md)**: Enterprise deployment standards, containerization, Kubernetes topologies, security hardening, database clustering, and observability.
 - **[Production Scaling & Client Credentials Guide (docs/PRODUCTION_SCALING_AND_CREDENTIALS_GUIDE.md)](file:///e:/Github/Matrimony%20Project/docs/PRODUCTION_SCALING_AND_CREDENTIALS_GUIDE.md)**: Client access checklists, production secret configurations, horizontal scaling blueprints, and launch verification sign-off matrix.
-- **[Credential Placeholders Map (docs/CREDENTIAL_PLACEHOLDERS_MAP.md)](file:///e:/Github/Matrimony%20Project/docs/CREDENTIAL_PLACEHOLDERS_MAP.md)**: Exhaustive inventory of every environment placeholder, line numbers, fallback behaviors, and live credential swap procedures.
-- **[Industry Research & Competitive Analysis (docs/INDUSTRY_RESEARCH_AND_COMPETITIVE_ANALYSIS.md)](file:///e:/Github/Matrimony%20Project/docs/INDUSTRY_RESEARCH_AND_COMPETITIVE_ANALYSIS.md)**: Exhaustive comparative analysis of 15+ dating and matrimony platforms (Shaadi, CatholicMatch, Muzz, eHarmony, Hinge) with SDA doctrinal adaptations.
+- **[Feature Gap & Ecosystem Analysis (docs/FEATURE_GAP_ANALYSIS.md)](file:///e:/Github/Matrimony%20Project/docs/FEATURE_GAP_ANALYSIS.md)**: Comparative feature gap audit against reference implementations, evaluating candidate safety, interactive prompts, and shortlist subsystems.
 
 ---
 
@@ -88,10 +87,12 @@ The monorepo structure is organized into discrete applications and shared packag
 │   ├── TECH_STACK.md            # Detailed technology stack and dependency analysis
 │   ├── FEATURES.md              # Domain specifications and feature catalog
 │   ├── GETTING_STARTED.md       # Developer onboarding and local execution guide
-│   └── PRODUCTION_READINESS.md  # Production hardening, deployment, and security checklist
+│   ├── API_SPECIFICATION.md     # REST & WebSocket API specification and payloads
+│   ├── PRODUCTION_READINESS.md  # Production hardening, deployment, and security checklist
+│   ├── PRODUCTION_SCALING_AND_CREDENTIALS_GUIDE.md # Production scaling, secrets, and credentials
+│   └── FEATURE_GAP_ANALYSIS.md  # Competitive gap analysis and missing feature specifications
 ├── infrastructure/
 │   └── docker/                  # Docker Compose definitions (PostgreSQL, Redis, MinIO)
-├── MVP.md                       # Phase 1 MVP scope and milestone execution plan
 └── README.md                    # Root platform documentation
 ```
 

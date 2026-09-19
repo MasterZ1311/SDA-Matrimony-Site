@@ -34,6 +34,13 @@ export class RespondInterestDto {
   status: InterestStatus;
 }
 
+export class ShortlistDto {
+  @ApiProperty({ description: 'Target candidate User ID to save/remove from shortlist', example: 'uuid-candidate-id' })
+  @IsString()
+  @IsNotEmpty()
+  targetUserId: string;
+}
+
 @ApiTags('Expressions of Interest')
 @Controller('interests')
 @UseGuards(JwtAuthGuard)
@@ -79,5 +86,26 @@ export class InterestsController {
     @Param('id') interestId: string,
   ) {
     return this.interestsService.withdrawInterest(userId, interestId);
+  }
+
+  @Post('shortlist')
+  @ApiOperation({ summary: 'Toggle saving candidate profile to shortlist for prayerful consideration' })
+  async toggleShortlist(
+    @CurrentUser('id') userId: string,
+    @Body() dto: ShortlistDto,
+  ) {
+    return this.interestsService.toggleShortlist(userId, dto.targetUserId);
+  }
+
+  @Get('shortlist')
+  @ApiOperation({ summary: 'Retrieve all shortlisted candidate profiles' })
+  async getShortlist(@CurrentUser('id') userId: string) {
+    return this.interestsService.getShortlist(userId);
+  }
+
+  @Get('notifications')
+  @ApiOperation({ summary: 'Retrieve unread matrimonial notifications and proposal count' })
+  async getNotifications(@CurrentUser('id') userId: string) {
+    return this.interestsService.getNotifications(userId);
   }
 }

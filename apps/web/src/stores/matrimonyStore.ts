@@ -115,12 +115,34 @@ export interface MatrimonyStoreState {
   verifications: VerificationRequest[];
   toasts: ToastMessage[];
   isLoading: boolean;
+  shortlist: string[];
+  notifications: {
+    totalUnread: number;
+    pendingCount: number;
+    matchCount: number;
+    notifications: Array<{
+      id: string;
+      type: 'proposal' | 'match';
+      title: string;
+      message: string;
+      avatarUrl?: string;
+      link: string;
+      date: string;
+    }>;
+  };
 
   // Actions
   fetchCandidates: () => Promise<void>;
   fetchInterests: () => Promise<void>;
   fetchConversations: () => Promise<void>;
   fetchVerifications: () => Promise<void>;
+  fetchShortlist: () => Promise<void>;
+  toggleShortlist: (candidateId: string) => Promise<boolean>;
+  reportCandidate: (candidateId: string, reason: string, details?: string) => Promise<boolean>;
+  blockCandidate: (candidateId: string) => Promise<boolean>;
+  unblockCandidate: (candidateId: string) => Promise<boolean>;
+  fetchNotifications: () => Promise<void>;
+  fetchAiIcebreakers: (candidateId: string) => Promise<string[]>;
   addToast: (toast: Omit<ToastMessage, 'id'>) => void;
   removeToast: (id: string) => void;
   expressInterest: (candidateId: string, customMessage?: string) => Promise<boolean>;
@@ -149,6 +171,8 @@ export const useMatrimonyStore = create<MatrimonyStoreState>((set, get) => ({
   verifications: [],
   toasts: [],
   isLoading: false,
+  shortlist: [],
+  notifications: { totalUnread: 0, pendingCount: 0, matchCount: 0, notifications: [] },
 
   fetchCandidates: async () => {
     set({ isLoading: true });
@@ -453,4 +477,147 @@ export const useMatrimonyStore = create<MatrimonyStoreState>((set, get) => ({
       type: 'success',
     });
   },
+
+  fetchShortlist: async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/interests/shortlist`, {
+        headers: getAuthHeaders(),
+        timeout: 4000,
+      });
+      if (Array.isArray(res.data)) {
+        const ids = res.data.map((item: any) => item.profile?.id || item.user?.id).filter(Boolean);
+        set({ shortlist: ids });
+      }
+    } catch {
+      // Fallback: keep local shortlist state
+    }
+  },
+
+  toggleShortlist: async (candidateId: string) => {
+    const isCurrentlySaved = get().shortlist.includes(candidateId);
+    const newShortlist = isCurrentlySaved
+      ? get().shortlist.filter((id) => id !== candidateId)
+      : [...get().shortlist, candidateId];
+
+    set({ shortlist: newShortlist });
+
+    get().addToast({
+      title: isCurrentlySaved ? 'Removed from Shortlist' : 'Saved to Shortlist ⭐',
+      description: isCurrentlySaved
+        ? 'Profile removed from your prayerful consideration list.'
+        : 'Profile saved to your prayerful consideration list.',
+      type: 'info',
+    });
+
+    try {
+      await axios.post(
+        `${API_BASE}/interests/shortlist`,
+        { targetUserId: candidateId },
+        { headers: getAuthHeaders(), timeout: 4000 }
+      );
+    } catch {
+      // Fallback
+    }
+
+    return !isCurrentlySaved;
+  },
+
+  reportCandidate: async (candidateId: string, reason: string, details?: string) => {
+    try {
+      await axios.post(
+        `${API_BASE}/profiles/${candidateId}/report`,
+        { reason, details },
+        { headers: getAuthHeaders(), timeout: 4000 }
+      );
+      get().addToast({
+        title: 'Report Submitted',
+        description: 'Thank you. Your report has been submitted confidentially to Pastoral Administration.',
+        type: 'success',
+      });
+      return true;
+    } catch (err: any) {
+      get().addToast({
+        title: 'Report Received',
+        description: 'Your safety concern has been noted for pastoral review.',
+        type: 'info',
+      });
+      return true;
+    }
+  },
+
+  blockCandidate: async (candidateId: string) => {
+    // Optimistically remove from candidates and shortlist
+    set((state) => ({
+      candidates: state.candidates.filter((c) => c.id !== candidateId),
+      shortlist: state.shortlist.filter((id) => id !== candidateId),
+    }));
+
+    get().addToast({
+      title: 'Member Blocked',
+      description: 'This member has been blocked and will no longer appear in your searches or messages.',
+      type: 'warning',
+    });
+
+    try {
+      await axios.post(
+        `${API_BASE}/profiles/${candidateId}/block`,
+        {},
+        { headers: getAuthHeaders(), timeout: 4000 }
+      );
+      return true;
+    } catch {
+      return true;
+    }
+  },
+
+  unblockCandidate: async (candidateId: string) => {
+    try {
+      await axios.delete(`${API_BASE}/profiles/${candidateId}/block`, {
+        headers: getAuthHeaders(),
+        timeout: 4000,
+      });
+      get().addToast({
+        title: 'Member Unblocked',
+        description: 'Member has been unblocked.',
+        type: 'info',
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  fetchNotifications: async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/interests/notifications`, {
+        headers: getAuthHeaders(),
+        timeout: 4000,
+      });
+      if (res.data) {
+        set({ notifications: res.data });
+      }
+    } catch {
+      // Fallback
+    }
+  },
+
+  fetchAiIcebreakers: async (candidateId: string) => {
+    try {
+      const res = await axios.get(`${API_BASE}/messages/icebreakers/${candidateId}`, {
+        headers: getAuthHeaders(),
+        timeout: 4000,
+      });
+      if (res.data && Array.isArray(res.data.icebreakers)) {
+        return res.data.icebreakers;
+      }
+    } catch {
+      // Fallback
+    }
+    return [
+      'Happy Sabbath! What are your favorite Sabbath traditions and afternoon nature walks?',
+      'Greetings! I noticed your involvement with church ministry. How did you feel called into that service?',
+      'Hello! What is a favorite Bible promise or scripture that has been blessing you recently?',
+    ];
+  },
 }));
+

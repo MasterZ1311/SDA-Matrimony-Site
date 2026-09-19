@@ -44,6 +44,20 @@ export class InterestsService {
       throw new ForbiddenException('Unable to express interest.');
     }
 
+    // Check if either user has blocked the other
+    const blockExists = await this.prisma.blockedUser.findFirst({
+      where: {
+        OR: [
+          { userId: senderId, blockedUserId: receiverId },
+          { userId: receiverId, blockedUserId: senderId },
+        ],
+      },
+    });
+
+    if (blockExists) {
+      throw new ForbiddenException('Unable to express interest due to user communication settings.');
+    }
+
     const interest = await this.prisma.interestRequest.upsert({
       where: {
         senderId_receiverId: {
@@ -198,6 +212,164 @@ export class InterestsService {
     return {
       message: 'Expression of interest withdrawn successfully.',
       interestId,
+    };
+  }
+
+  async toggleShortlist(userId: string, targetUserId: string) {
+    if (userId === targetUserId) {
+      throw new BadRequestException('You cannot shortlist your own profile.');
+    }
+
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      include: { profile: true },
+    });
+
+    if (!targetUser || !targetUser.profile) {
+      throw new NotFoundException('Candidate profile does not exist.');
+    }
+
+    const existing = await this.prisma.favorite.findUnique({
+      where: {
+        userId_targetUserId: {
+          userId,
+          targetUserId,
+        },
+      },
+    });
+
+    if (existing) {
+      await this.prisma.favorite.delete({
+        where: { id: existing.id },
+      });
+      return {
+        isFavorited: false,
+        message: 'Profile removed from your shortlisted favorites.',
+      };
+    } else {
+      await this.prisma.favorite.create({
+        data: {
+          userId,
+          targetUserId,
+        },
+      });
+      return {
+        isFavorited: true,
+        message: 'Profile saved to your shortlisted favorites for prayerful consideration ⭐',
+      };
+    }
+  }
+
+  async getShortlist(userId: string) {
+    const favorites = await this.prisma.favorite.findMany({
+      where: { userId },
+      include: {
+        targetUser: {
+          include: {
+            profile: {
+              include: {
+                spiritualProfile: { include: { division: true, conference: true, localChurch: true } },
+                lifestyleProfile: true,
+                educationCareer: true,
+                photos: { where: { isPrimary: true } },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return favorites.map((f) => ({
+      favoriteId: f.id,
+      savedAt: f.createdAt,
+      user: {
+        id: f.targetUser.id,
+        email: f.targetUser.email,
+        role: f.targetUser.role,
+      },
+      profile: f.targetUser.profile,
+    }));
+  }
+
+  async getNotifications(userId: string) {
+    const [pendingReceived, acceptedMatches] = await Promise.all([
+      this.prisma.interestRequest.findMany({
+        where: { receiverId: userId, status: InterestStatus.PENDING },
+        include: {
+          sender: {
+            include: {
+              profile: {
+                include: { photos: { where: { isPrimary: true } } },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+      }),
+      this.prisma.interestRequest.findMany({
+        where: {
+          OR: [{ senderId: userId }, { receiverId: userId }],
+          status: InterestStatus.ACCEPTED,
+        },
+        include: {
+          sender: {
+            include: { profile: { include: { photos: { where: { isPrimary: true } } } } },
+          },
+          receiver: {
+            include: { profile: { include: { photos: { where: { isPrimary: true } } } } },
+          },
+        },
+        orderBy: { updatedAt: 'desc' },
+        take: 5,
+      }),
+    ]);
+
+    const notifications: Array<{
+      id: string;
+      type: 'proposal' | 'match';
+      title: string;
+      message: string;
+      avatarUrl?: string;
+      link: string;
+      date: Date;
+    }> = [];
+
+    pendingReceived.forEach((item) => {
+      const senderProfile = item.sender.profile;
+      const senderName = senderProfile ? `${senderProfile.firstName} ${senderProfile.lastName}`.trim() : 'Adventist Member';
+      notifications.push({
+        id: `prop-${item.id}`,
+        type: 'proposal',
+        title: 'New Matrimonial Proposal',
+        message: `${senderName} expressed interest in connecting with you.`,
+        avatarUrl: senderProfile?.photos?.[0]?.url,
+        link: '/interests',
+        date: item.createdAt,
+      });
+    });
+
+    acceptedMatches.forEach((item) => {
+      const otherUser = item.senderId === userId ? item.receiver : item.sender;
+      const otherProfile = otherUser.profile;
+      const otherName = otherProfile ? `${otherProfile.firstName} ${otherProfile.lastName}`.trim() : 'Match';
+      notifications.push({
+        id: `match-${item.id}`,
+        type: 'match',
+        title: 'Connected Match',
+        message: `You and ${otherName} are connected! Start a Christ-centered conversation.`,
+        avatarUrl: otherProfile?.photos?.[0]?.url,
+        link: '/messages',
+        date: item.updatedAt,
+      });
+    });
+
+    return {
+      totalUnread: pendingReceived.length,
+      pendingCount: pendingReceived.length,
+      matchCount: acceptedMatches.length,
+      notifications,
     };
   }
 }

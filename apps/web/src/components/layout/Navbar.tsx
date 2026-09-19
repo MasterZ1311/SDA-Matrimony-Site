@@ -1,6 +1,5 @@
 'use client';
-
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
@@ -15,13 +14,32 @@ import {
   Menu,
   X,
   User,
+  Bell,
 } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
   const pathname = usePathname();
   const { user, isAuthenticated, logout } = useAuthStore();
-  const { interests, conversations } = useMatrimonyStore();
+  const { interests, conversations, notifications, fetchNotifications } = useMatrimonyStore();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchNotifications().catch(() => {});
+    }
+  }, [isAuthenticated, fetchNotifications]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotificationsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const pendingReceivedInterests = interests.filter(
     (i) => i.type === 'RECEIVED' && i.status === 'PENDING'
@@ -31,6 +49,8 @@ export const Navbar: React.FC = () => {
     (sum, c) => sum + (c.unreadCount || 0),
     0
   );
+
+  const totalAlerts = (notifications?.totalUnread || 0) + pendingReceivedInterests;
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
@@ -207,6 +227,178 @@ export const Navbar: React.FC = () => {
         <div className="nav-desktop" style={{ alignItems: 'center', gap: '12px' }}>
           {isAuthenticated && user ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {/* Notification Bell Dropdown */}
+              <div style={{ position: 'relative' }} ref={notifRef}>
+                <button
+                  onClick={() => setNotificationsOpen(!notificationsOpen)}
+                  title="Notifications"
+                  aria-label="View notifications"
+                  style={{
+                    position: 'relative',
+                    background: notificationsOpen ? 'var(--primary-50)' : 'none',
+                    border: '1px solid',
+                    borderColor: notificationsOpen ? 'var(--border-subtle)' : 'transparent',
+                    borderRadius: '50%',
+                    width: '36px',
+                    height: '36px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    color: totalAlerts > 0 ? 'var(--primary-800)' : 'var(--text-muted)',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  <Bell size={19} />
+                  {totalAlerts > 0 && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: '2px',
+                        right: '2px',
+                        width: '18px',
+                        height: '18px',
+                        borderRadius: '50%',
+                        backgroundColor: 'var(--accent-gold)',
+                        color: '#FFFFFF',
+                        fontSize: '0.65rem',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 0 0 2px #FFF',
+                      }}
+                    >
+                      {totalAlerts > 9 ? '9+' : totalAlerts}
+                    </span>
+                  )}
+                </button>
+
+                {notificationsOpen && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 10px)',
+                      right: 0,
+                      width: '340px',
+                      backgroundColor: '#FFFFFF',
+                      borderRadius: 'var(--radius-lg)',
+                      boxShadow: 'var(--shadow-lg)',
+                      border: '1px solid var(--border-subtle)',
+                      zIndex: 100,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <div
+                      style={{
+                        padding: '14px 16px',
+                        borderBottom: '1px solid var(--border-subtle)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        backgroundColor: 'var(--primary-50)',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Bell size={16} color="var(--primary-800)" />
+                        <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--primary-900)' }}>
+                          Matrimonial Alerts
+                        </span>
+                      </div>
+                      {totalAlerts > 0 && (
+                        <span className="badge badge-gold" style={{ fontSize: '0.7rem' }}>
+                          {totalAlerts} New
+                        </span>
+                      )}
+                    </div>
+
+                    <div style={{ maxHeight: '320px', overflowY: 'auto' }}>
+                      {notifications?.notifications && notifications.notifications.length > 0 ? (
+                        notifications.notifications.map((notif) => (
+                          <Link
+                            key={notif.id}
+                            href={notif.link}
+                            onClick={() => setNotificationsOpen(false)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              gap: '12px',
+                              padding: '12px 16px',
+                              borderBottom: '1px solid var(--border-subtle)',
+                              textDecoration: 'none',
+                              color: 'inherit',
+                              transition: 'background 0.2s ease',
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '50%',
+                                backgroundColor: notif.type === 'match' ? 'rgba(76, 175, 80, 0.12)' : 'rgba(200, 155, 60, 0.12)',
+                                color: notif.type === 'match' ? 'var(--success)' : 'var(--accent-gold)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0,
+                                marginTop: '2px',
+                              }}
+                            >
+                              {notif.type === 'match' ? <CheckCircle2 size={16} /> : <Heart size={16} />}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <p style={{ margin: 0, fontSize: '0.825rem', fontWeight: 600, color: 'var(--primary-900)' }}>
+                                {notif.title}
+                              </p>
+                              <p
+                                style={{
+                                  margin: '2px 0 0',
+                                  fontSize: '0.775rem',
+                                  color: 'var(--text-secondary)',
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                }}
+                              >
+                                {notif.message}
+                              </p>
+                              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                {new Date(notif.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                              </span>
+                            </div>
+                          </Link>
+                        ))
+                      ) : (
+                        <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                          <Heart size={24} style={{ margin: '0 auto 8px', opacity: 0.5 }} />
+                          <p style={{ margin: 0, fontSize: '0.825rem', fontWeight: 500 }}>
+                            No pending notifications
+                          </p>
+                          <span style={{ fontSize: '0.75rem' }}>You are completely up to date!</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div
+                      style={{
+                        padding: '10px 16px',
+                        borderTop: '1px solid var(--border-subtle)',
+                        textAlign: 'center',
+                        backgroundColor: '#FFFFFF',
+                      }}
+                    >
+                      <Link
+                        href="/interests"
+                        onClick={() => setNotificationsOpen(false)}
+                        style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary-700)', textDecoration: 'none' }}
+                      >
+                        View All Received Proposals &rarr;
+                      </Link>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <Link
                 href="/profile/me"
                 style={{
@@ -374,6 +566,30 @@ export const Navbar: React.FC = () => {
             </div>
             {totalUnreadMessages > 0 && (
               <span className="badge badge-primary">{totalUnreadMessages} New</span>
+            )}
+          </Link>
+
+          <Link
+            href="/interests"
+            onClick={closeMobileMenu}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '12px 16px',
+              borderRadius: 'var(--radius-md)',
+              backgroundColor: 'transparent',
+              color: 'var(--primary-900)',
+              fontWeight: 600,
+              fontSize: '1rem',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <Bell size={20} color="var(--primary-700)" />
+              Notifications & Alerts
+            </div>
+            {totalAlerts > 0 && (
+              <span className="badge badge-gold">{totalAlerts} New</span>
             )}
           </Link>
 

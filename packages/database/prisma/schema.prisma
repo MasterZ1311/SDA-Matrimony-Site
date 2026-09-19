@@ -90,6 +90,13 @@ enum RelocationPreference {
   NOT_WILLING_TO_RELOCATE
 }
 
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  RESOLVED
+  DISMISSED
+}
+
 model User {
   id                    String    @id @default(uuid())
   email                 String    @unique
@@ -110,6 +117,12 @@ model User {
   conversationsAsUser2  Conversation[]        @relation("User2Conversations")
   chatMessages          ChatMessage[]
   pastoralVerifications PastoralVerification[]
+  favorites             Favorite[]            @relation("UserFavorites")
+  favoritedBy           Favorite[]            @relation("FavoritedByUsers")
+  filedReports          Report[]              @relation("FiledReports")
+  receivedReports       Report[]              @relation("ReceivedReports")
+  blockedUsers          BlockedUser[]         @relation("UserBlocks")
+  blockedBy             BlockedUser[]         @relation("BlockedByUsers")
 
   @@index([email])
   @@index([role])
@@ -132,6 +145,7 @@ model Profile {
   residenceCity       String             @default("Silver Spring")
   bioSummary          String?            @db.Text
   partnerExpectations String?            @db.Text
+  prompts             Json?
   verificationStatus  VerificationStatus @default(UNVERIFIED)
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
@@ -347,4 +361,47 @@ model PastoralVerification {
 
   @@index([userId, status])
   @@index([verificationToken])
+}
+
+model Favorite {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation("UserFavorites", fields: [userId], references: [id], onDelete: Cascade)
+  targetUserId String
+  targetUser   User     @relation("FavoritedByUsers", fields: [targetUserId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+
+  @@unique([userId, targetUserId])
+  @@index([userId])
+  @@index([targetUserId])
+}
+
+model Report {
+  id             String       @id @default(uuid())
+  reporterId     String
+  reporter       User         @relation("FiledReports", fields: [reporterId], references: [id], onDelete: Cascade)
+  reportedUserId String
+  reportedUser   User         @relation("ReceivedReports", fields: [reportedUserId], references: [id], onDelete: Cascade)
+  reason         String
+  details        String?      @db.Text
+  status         ReportStatus @default(PENDING)
+  actionTaken    String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([status])
+  @@index([reportedUserId])
+}
+
+model BlockedUser {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation("UserBlocks", fields: [userId], references: [id], onDelete: Cascade)
+  blockedUserId String
+  blockedUser   User     @relation("BlockedByUsers", fields: [blockedUserId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+
+  @@unique([userId, blockedUserId])
+  @@index([userId])
+  @@index([blockedUserId])
 }
