@@ -9,6 +9,7 @@ import { VerificationModule } from './modules/verification/verification.module';
 import { BiodataModule } from './modules/biodata/biodata.module';
 import { InterestsModule } from './modules/interests/interests.module';
 import { MessagesModule } from './modules/messages/messages.module';
+import { MailModule } from './modules/mail/mail.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { MessagesModule } from './modules/messages/messages.module';
     BiodataModule,
     InterestsModule,
     MessagesModule,
+    MailModule,
   ],
 })
 export class AppModule {}
