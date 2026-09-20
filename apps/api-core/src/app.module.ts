@@ -10,6 +10,7 @@ import { BiodataModule } from './modules/biodata/biodata.module';
 import { InterestsModule } from './modules/interests/interests.module';
 import { MessagesModule } from './modules/messages/messages.module';
 import { MailModule } from './modules/mail/mail.module';
+import { FirebaseModule } from './common/firebase/firebase.module';
 import { MatchmakingModule } from './modules/matchmaking/matchmaking.module';
 
 @Module({
@@ -18,6 +19,7 @@ import { MatchmakingModule } from './modules/matchmaking/matchmaking.module';
       isGlobal: true,
       envFilePath: '../../.env',
     }),
+    FirebaseModule,
     PrismaModule,
     HealthModule,
     AuthModule,

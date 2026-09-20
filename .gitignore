@@ -37,6 +37,8 @@ htmlcov/
 *.crt
 id_rsa
 id_rsa.pub
+*-firebase-adminsdk-*.json
+serviceAccountKey*.json
 
 # Local Storage, Databases & Containers
 postgres-data/

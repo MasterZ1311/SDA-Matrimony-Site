@@ -29,10 +29,11 @@ export default function HomePage() {
   const [ageTo, setAgeTo] = useState('32');
   const [division, setDivision] = useState('ALL');
   const [diet, setDiet] = useState('ALL');
+  const [institution, setInstitution] = useState('ALL');
 
   const handleQuickSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    router.push(`/discover?gender=${lookingFor}&minAge=${ageFrom}&maxAge=${ageTo}&division=${division}&diet=${diet}`);
+    router.push(`/discover?gender=${lookingFor}&minAge=${ageFrom}&maxAge=${ageTo}&division=${division}&diet=${diet}&institution=${institution}`);
   };
 
   return (
@@ -195,6 +196,31 @@ export default function HomePage() {
                   <option value="STRICT_VEGAN">Strict Vegan (Plant-Based)</option>
                   <option value="LACTO_OVO">Lacto-Ovo Vegetarian</option>
                   <option value="CLEAN_BIBLICAL">Biblical Clean Foods Only</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                  Adventist College / Alumni
+                </label>
+                <select
+                  value={institution}
+                  onChange={(e) => setInstitution(e.target.value)}
+                  className="input-control"
+                  style={{ fontWeight: 600 }}
+                >
+                  <option value="ALL">Any College / University</option>
+                  <option value="Spicer Adventist University">Spicer Adventist University</option>
+                  <option value="Andrews University">Andrews University</option>
+                  <option value="Loma Linda University">Loma Linda University</option>
+                  <option value="Oakwood University">Oakwood University</option>
+                  <option value="Southern Adventist University">Southern Adventist University</option>
+                  <option value="Southwestern Adventist University">Southwestern Adventist University</option>
+                  <option value="Walla Walla University">Walla Walla University</option>
+                  <option value="Lowry Memorial College">Lowry Memorial College</option>
+                  <option value="Roorkee Adventist College">Roorkee Adventist College</option>
+                  <option value="Flaiz Adventist College">Flaiz Adventist College</option>
+                  <option value="Northeast Adventist College">Northeast Adventist College</option>
                 </select>
               </div>
 

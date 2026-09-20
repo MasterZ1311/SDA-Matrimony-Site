@@ -1,8 +1,11 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useMatrimonyStore } from '@/stores/matrimonyStore';
+import { ReportModal } from '@/components/common/ReportModal';
+import { LoadingScreen } from '@/components/common/LoadingScreen';
 import {
   Heart,
   CheckCircle2,
@@ -19,6 +22,7 @@ import {
   Utensils,
   GraduationCap,
   ShieldCheck,
+  ShieldAlert,
   Star,
   LayoutGrid,
   List,
@@ -26,25 +30,49 @@ import {
   Send,
 } from 'lucide-react';
 
-export default function DiscoverPage() {
-  const { candidates, interests, expressInterest, fetchCandidates } = useMatrimonyStore();
+function DiscoverContent() {
+  const searchParams = useSearchParams();
+  const paramGender = searchParams?.get('gender');
+  const paramDivision = searchParams?.get('division');
+  const paramDiet = searchParams?.get('diet');
+  const paramInstitution = searchParams?.get('institution');
+
+  const {
+    candidates,
+    interests,
+    expressInterest,
+    fetchCandidates,
+    shortlist,
+    toggleShortlist,
+    fetchShortlist,
+    isLoading,
+  } = useMatrimonyStore();
+
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedDivision, setSelectedDivision] = useState('ALL');
-  const [selectedDiet, setSelectedDiet] = useState('ALL');
+  const [selectedDivision, setSelectedDivision] = useState(
+    paramDivision && paramDivision !== 'ALL' ? paramDivision : 'ALL'
+  );
+  const [selectedDiet, setSelectedDiet] = useState(
+    paramDiet && paramDiet !== 'ALL' ? paramDiet : 'ALL'
+  );
+  const [selectedInstitution, setSelectedInstitution] = useState(
+    paramInstitution && paramInstitution !== 'ALL' ? paramInstitution : 'ALL'
+  );
   const [onlyVerified, setOnlyVerified] = useState(false);
-  const [genderFilter, setGenderFilter] = useState<'ALL' | 'FEMALE' | 'MALE'>('ALL');
+  const [genderFilter, setGenderFilter] = useState<'ALL' | 'FEMALE' | 'MALE'>(
+    paramGender === 'FEMALE' || paramGender === 'MALE' ? paramGender : 'ALL'
+  );
   const [sortBy, setSortBy] = useState<'compatibility' | 'age' | 'name'>('compatibility');
   const [viewMode, setViewMode] = useState<'detailed' | 'grid'>('detailed');
   const [showMobileFilters, setShowMobileFilters] = useState(false);
-  const [shortlisted, setShortlisted] = useState<Record<string, boolean>>({});
+
+  // Safety & Report Modal State
+  const [reportTarget, setReportTarget] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     fetchCandidates();
-  }, [fetchCandidates]);
-
-  const toggleShortlist = (id: string) => {
-    setShortlisted((prev) => ({ ...prev, [id]: !prev[id] }));
-  };
+    fetchShortlist();
+  }, [fetchCandidates, fetchShortlist]);
 
   const filteredAndSortedCandidates = useMemo(() => {
     return candidates
@@ -62,7 +90,8 @@ export default function DiscoverPage() {
           const matchCity = c.city.toLowerCase().includes(q);
           const matchChurch = c.localChurch.toLowerCase().includes(q);
           const matchDivision = c.division.toLowerCase().includes(q);
-          if (!matchName && !matchOcc && !matchCity && !matchChurch && !matchDivision) {
+          const matchInst = c.institution ? c.institution.toLowerCase().includes(q) : false;
+          if (!matchName && !matchOcc && !matchCity && !matchChurch && !matchDivision && !matchInst) {
             return false;
           }
         }
@@ -75,6 +104,13 @@ export default function DiscoverPage() {
         // Diet
         if (selectedDiet !== 'ALL' && !c.diet.toLowerCase().includes(selectedDiet.toLowerCase())) {
           return false;
+        }
+
+        // Adventist Institution / Alumni
+        if (selectedInstitution !== 'ALL') {
+          if (!c.institution || !c.institution.toLowerCase().includes(selectedInstitution.toLowerCase())) {
+            return false;
+          }
         }
 
         // Verified only
@@ -90,12 +126,13 @@ export default function DiscoverPage() {
         if (sortBy === 'name') return a.name.localeCompare(b.name);
         return 0;
       });
-  }, [candidates, genderFilter, searchQuery, selectedDivision, selectedDiet, onlyVerified, sortBy]);
+  }, [candidates, genderFilter, searchQuery, selectedDivision, selectedDiet, selectedInstitution, onlyVerified, sortBy]);
 
   const handleResetFilters = () => {
     setSearchQuery('');
     setSelectedDivision('ALL');
     setSelectedDiet('ALL');
+    setSelectedInstitution('ALL');
     setOnlyVerified(false);
     setGenderFilter('ALL');
     setSortBy('compatibility');
@@ -125,8 +162,8 @@ export default function DiscoverPage() {
               </p>
             </div>
 
-            {/* View Switcher & Mobile Filters Toggle */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {/* View Mode Toggle & Mobile Filter Button */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{ display: 'flex', backgroundColor: '#FFFFFF', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: '2px' }}>
                 <button
                   type="button"
@@ -190,7 +227,7 @@ export default function DiscoverPage() {
             alignItems: 'flex-start',
           }}
         >
-          {/* Left Sidebar: Shaadi-Style Filter Accordion Panel */}
+          {/* Left Sidebar: Filter Accordion Panel */}
           <aside
             className={`card discover-sidebar ${showMobileFilters ? 'active' : ''}`}
             style={{
@@ -226,12 +263,30 @@ export default function DiscoverPage() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {/* Looking for Gender */}
+              {/* Keyword Search */}
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '8px' }}>
-                  Looking For
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '6px' }}>
+                  Search by Keyword
                 </label>
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ position: 'relative' }}>
+                  <Search size={15} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Name, church, city, doctor..."
+                    className="input-control"
+                    style={{ paddingLeft: '36px', fontSize: '0.85rem' }}
+                  />
+                </div>
+              </div>
+
+              {/* Looking for Bride / Groom */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '6px' }}>
+                  Candidate Gender
+                </label>
+                <div style={{ display: 'flex', gap: '6px' }}>
                   <button
                     type="button"
                     onClick={() => setGenderFilter('ALL')}
@@ -317,10 +372,36 @@ export default function DiscoverPage() {
                 </select>
               </div>
 
+              {/* Adventist College / University Alumni */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '6px' }}>
+                  Adventist College / Alumni
+                </label>
+                <select
+                  value={selectedInstitution}
+                  onChange={(e) => setSelectedInstitution(e.target.value)}
+                  className="input-control"
+                  style={{ fontSize: '0.85rem' }}
+                >
+                  <option value="ALL">All Colleges / Universities</option>
+                  <option value="Spicer">Spicer Adventist University</option>
+                  <option value="Andrews">Andrews University</option>
+                  <option value="Loma Linda">Loma Linda University</option>
+                  <option value="Oakwood">Oakwood University</option>
+                  <option value="Southern">Southern Adventist University</option>
+                  <option value="Southwestern">Southwestern Adventist University</option>
+                  <option value="Walla Walla">Walla Walla University</option>
+                  <option value="Lowry">Lowry Memorial College</option>
+                  <option value="Roorkee">Roorkee Adventist College</option>
+                  <option value="Flaiz">Flaiz Adventist College</option>
+                  <option value="Northeast">Northeast Adventist College</option>
+                </select>
+              </div>
+
               {/* Sort By */}
               <div>
                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '6px' }}>
-                  Sort Matches By
+                  Sort Candidate Feed By
                 </label>
                 <select
                   value={sortBy}
@@ -328,85 +409,33 @@ export default function DiscoverPage() {
                   className="input-control"
                   style={{ fontSize: '0.85rem' }}
                 >
-                  <option value="compatibility">Highest Compatibility (AI Score)</option>
-                  <option value="age">Age (Youngest First)</option>
-                  <option value="name">Name (Alphabetical)</option>
+                  <option value="compatibility">AI Compatibility Score</option>
+                  <option value="age">Age: Youngest First</option>
+                  <option value="name">Name: Alphabetical (A-Z)</option>
                 </select>
               </div>
             </div>
           </aside>
 
-          {/* Right Column: Member Profile Cards */}
-          <main>
-            {/* Search Input Bar */}
-            <div
-              className="card"
-              style={{
-                padding: '14px 20px',
-                marginBottom: '20px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                backgroundColor: '#FFFFFF',
-              }}
-            >
-              <Search size={18} color="var(--text-muted)" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by candidate name, occupation, church, city, or division..."
-                style={{
-                  border: 'none',
-                  outline: 'none',
-                  width: '100%',
-                  fontSize: '0.925rem',
-                  color: 'var(--text-main)',
-                }}
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.8rem' }}
-                >
-                  Clear
-                </button>
-              )}
-            </div>
-
-            {/* Candidate List / Empty State */}
+          {/* Right Main Candidate List */}
+          <main style={{ minWidth: 0, flex: 1 }}>
             {filteredAndSortedCandidates.length === 0 ? (
               <div
-                className="card animate-fade"
+                className="card"
                 style={{
                   padding: '60px 24px',
                   textAlign: 'center',
                   backgroundColor: '#FFFFFF',
                 }}
               >
-                <div
-                  style={{
-                    width: '64px',
-                    height: '64px',
-                    borderRadius: '50%',
-                    backgroundColor: 'var(--primary-50)',
-                    color: 'var(--primary-700)',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginBottom: '16px',
-                  }}
-                >
-                  <Users size={32} />
-                </div>
-                <h3 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--primary-900)', marginBottom: '8px' }}>
-                  No Candidate Profiles Found
+                <Users size={48} color="var(--text-muted)" style={{ margin: '0 auto 16px auto', opacity: 0.6 }} />
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-900)', marginBottom: '8px' }}>
+                  No matching candidates found
                 </h3>
-                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', maxWidth: '440px', margin: '0 auto 20px auto', lineHeight: 1.6 }}>
-                  Try relaxing your filter parameters or search terms to discover more Adventist singles.
+                <p style={{ color: 'var(--text-secondary)', maxWidth: '420px', margin: '0 auto 24px auto', fontSize: '0.9rem' }}>
+                  Try relaxing your division, dietary, or college filters to view more profiles across the global church fellowship.
                 </p>
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
                   <button
                     onClick={handleResetFilters}
                     className="btn btn-outline"
@@ -420,11 +449,11 @@ export default function DiscoverPage() {
                 </div>
               </div>
             ) : viewMode === 'detailed' ? (
-              /* Shaadi.com Signature Detailed Horizontal Card */
+              /* Signature Detailed Horizontal Card */
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 {filteredAndSortedCandidates.map((candidate) => {
                   const sent = isSent(candidate.id);
-                  const isFav = !!shortlisted[candidate.id];
+                  const isFav = shortlist.includes(candidate.id);
 
                   return (
                     <div
@@ -477,27 +506,54 @@ export default function DiscoverPage() {
                               </p>
                             </div>
 
-                            <button
-                              type="button"
-                              onClick={() => toggleShortlist(candidate.id)}
-                              style={{
-                                background: isFav ? 'var(--accent-gold-light)' : '#FFFFFF',
-                                border: '1px solid var(--border-subtle)',
-                                borderRadius: '50%',
-                                width: '36px',
-                                height: '36px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer',
-                              }}
-                              aria-label="Shortlist profile"
-                            >
-                              <Star size={18} fill={isFav ? '#C5A059' : 'none'} color={isFav ? '#C5A059' : 'var(--text-muted)'} />
-                            </button>
+                            {/* Top Right Actions: Star Shortlist & Shield Report */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <button
+                                type="button"
+                                onClick={() => toggleShortlist(candidate.id)}
+                                title={isFav ? 'Remove from Shortlist' : 'Add to Shortlist'}
+                                style={{
+                                  background: isFav ? 'rgba(200, 155, 60, 0.15)' : '#FFFFFF',
+                                  border: '1px solid var(--border-subtle)',
+                                  borderRadius: '50%',
+                                  width: '36px',
+                                  height: '36px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease',
+                                }}
+                                aria-label="Shortlist profile"
+                              >
+                                <Star size={18} fill={isFav ? '#C5A059' : 'none'} color={isFav ? '#C5A059' : 'var(--text-muted)'} />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => setReportTarget({ id: candidate.id, name: candidate.name })}
+                                title="Report Profile / Confidential Pastoral Safety"
+                                style={{
+                                  background: '#FFFFFF',
+                                  border: '1px solid var(--border-subtle)',
+                                  borderRadius: '50%',
+                                  width: '36px',
+                                  height: '36px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  cursor: 'pointer',
+                                  color: 'var(--text-muted)',
+                                  transition: 'all 0.2s ease',
+                                }}
+                                aria-label="Report candidate profile"
+                              >
+                                <ShieldAlert size={17} />
+                              </button>
+                            </div>
                           </div>
 
-                          {/* 4-Item Shaadi Fact Grid */}
+                          {/* 4-Item Fact Grid */}
                           <div
                             style={{
                               display: 'grid',
@@ -584,6 +640,7 @@ export default function DiscoverPage() {
               >
                 {filteredAndSortedCandidates.map((candidate) => {
                   const sent = isSent(candidate.id);
+                  const isFav = shortlist.includes(candidate.id);
 
                   return (
                     <div key={candidate.id} className="card animate-fade" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -603,6 +660,43 @@ export default function DiscoverPage() {
                             </span>
                           </div>
                         )}
+                        <div style={{ position: 'absolute', top: '12px', right: '12px', display: 'flex', gap: '6px' }}>
+                          <button
+                            type="button"
+                            onClick={() => toggleShortlist(candidate.id)}
+                            style={{
+                              background: 'rgba(255, 255, 255, 0.9)',
+                              border: 'none',
+                              borderRadius: '50%',
+                              width: '32px',
+                              height: '32px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <Star size={16} fill={isFav ? '#C5A059' : 'none'} color={isFav ? '#C5A059' : 'var(--text-muted)'} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setReportTarget({ id: candidate.id, name: candidate.name })}
+                            style={{
+                              background: 'rgba(255, 255, 255, 0.9)',
+                              border: 'none',
+                              borderRadius: '50%',
+                              width: '32px',
+                              height: '32px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              color: 'var(--text-muted)',
+                            }}
+                          >
+                            <ShieldAlert size={15} />
+                          </button>
+                        </div>
                         <div style={{ position: 'absolute', bottom: '12px', right: '12px' }}>
                           <span className="badge badge-gold">
                             <Sparkles size={11} /> {candidate.compatibilityScore}% Match
@@ -650,6 +744,23 @@ export default function DiscoverPage() {
           </main>
         </div>
       </div>
+
+      {/* Pastoral Safety & Report Modal */}
+      {reportTarget && (
+        <ReportModal
+          candidateId={reportTarget.id}
+          candidateName={reportTarget.name}
+          onClose={() => setReportTarget(null)}
+        />
+      )}
     </div>
+  );
+}
+
+export default function DiscoverPage() {
+  return (
+    <Suspense fallback={<LoadingScreen message="Loading Adventist Candidates..." />}>
+      <DiscoverContent />
+    </Suspense>
   );
 }

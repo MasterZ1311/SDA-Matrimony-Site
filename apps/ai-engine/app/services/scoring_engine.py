@@ -382,6 +382,20 @@ class SDAMatchScoringEngine:
             score = 8.0
             explanation = "Varied educational trajectories; shared values remain primary."
 
+        # Check for Adventist Higher Education Heritage
+        inst_a = str(ec_a.get("institution") or "").lower()
+        inst_b = str(ec_b.get("institution") or "").lower()
+        sda_institutions = [
+            'loma linda', 'andrews', 'oakwood', 'southern', 'walla walla',
+            'southwestern', 'pacific union', 'adventist', 'spicer', 'avondale',
+            'montemorelos', 'babcock', 'friedensau', 'helderberg', 'weimar'
+        ]
+        a_is_sda = any(inst in inst_a for inst in sda_institutions)
+        b_is_sda = any(inst in inst_b for inst in sda_institutions)
+        if a_is_sda and b_is_sda:
+            explanation += " Both candidates share recognized Adventist Higher Education collegiate heritage."
+            score = min(15.0, score + 2.0)
+
         factors = [{
             "factorName": "Education & Career Alignment",
             "weight": 15,
@@ -390,4 +404,5 @@ class SDAMatchScoringEngine:
             "explanation": explanation
         }]
         return score, factors
+
 

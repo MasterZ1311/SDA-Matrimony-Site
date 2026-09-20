@@ -15,18 +15,22 @@ import {
   Compass,
 } from 'lucide-react';
 
-const ICEBREAKERS = [
+const DEFAULT_ICEBREAKERS = [
   'Happy Sabbath preparation! What are your favorite Sabbath traditions?',
   'I loved your dedication to church ministry. What inspired you to serve?',
   'What is your favorite biblical promise or scripture that guides your life?',
+  'Which Adventist university or academy did you attend?',
 ];
 
 export default function MessagesPage() {
-  const { conversations, messages, sendMessage, fetchConversations } = useMatrimonyStore();
+  const { conversations, messages, sendMessage, fetchConversations, fetchAiIcebreakers } = useMatrimonyStore();
   const [activeConvId, setActiveConvId] = useState<string>('');
   const [inputText, setInputText] = useState('');
   const [searchFilter, setSearchFilter] = useState('');
   const [mobileShowChat, setMobileShowChat] = useState(false);
+  const [aiIcebreakers, setAiIcebreakers] = useState<string[]>(DEFAULT_ICEBREAKERS);
+  const [loadingIcebreakers, setLoadingIcebreakers] = useState(false);
+  const [showIcebreakerDrawer, setShowIcebreakerDrawer] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -40,6 +44,26 @@ export default function MessagesPage() {
   }, [conversations, activeConvId]);
 
   const activeConv = conversations.find((c) => c.id === activeConvId) || conversations[0];
+
+  const loadAiIcebreakers = async () => {
+    if (!activeConv) return;
+    setLoadingIcebreakers(true);
+    try {
+      const result = await fetchAiIcebreakers(activeConv.participantId);
+      if (result && result.length > 0) {
+        setAiIcebreakers(result);
+      } else {
+        setAiIcebreakers(DEFAULT_ICEBREAKERS);
+      }
+      setShowIcebreakerDrawer(true);
+    } catch {
+      setAiIcebreakers(DEFAULT_ICEBREAKERS);
+      setShowIcebreakerDrawer(true);
+    } finally {
+      setLoadingIcebreakers(false);
+    }
+  };
+
   const activeMessages = activeConv ? messages[activeConv.id] || [] : [];
 
   const filteredConversations = conversations.filter((c) =>
@@ -340,31 +364,57 @@ export default function MessagesPage() {
                 }}
               >
                 {activeMessages.length === 0 ? (
-                  <div style={{ margin: 'auto', textAlign: 'center', maxWidth: '400px' }}>
-                    <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-                      Start your conversation with a Christ-centered icebreaker:
+                  <div style={{ margin: 'auto', textAlign: 'center', maxWidth: '440px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
+                      <Sparkles size={18} color="var(--accent-gold)" />
+                      <p style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--primary-900)', margin: 0 }}>
+                        Christ-Centered AI Conversation Starters
+                      </p>
+                    </div>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+                      Click any prompt below to populate your message and break the ice respectfully:
                     </p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {ICEBREAKERS.map((prompt, i) => (
+                      {aiIcebreakers.map((prompt, i) => (
                         <button
                           key={i}
                           type="button"
                           onClick={() => setInputText(prompt)}
                           className="btn btn-outline"
                           style={{
-                            fontSize: '0.8rem',
+                            fontSize: '0.825rem',
                             textAlign: 'left',
-                            padding: '8px 12px',
+                            padding: '10px 14px',
                             backgroundColor: '#FFFFFF',
                             borderColor: 'var(--border-subtle)',
                             color: 'var(--primary-900)',
+                            lineHeight: 1.4,
                           }}
                         >
-                          <Sparkles size={13} color="var(--accent-gold)" style={{ display: 'inline', marginRight: '6px' }} />
+                          <Sparkles size={13} color="var(--accent-gold)" style={{ display: 'inline', marginRight: '6px', flexShrink: 0 }} />
                           {prompt}
                         </button>
                       ))}
                     </div>
+                    <button
+                      type="button"
+                      onClick={loadAiIcebreakers}
+                      disabled={loadingIcebreakers}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--primary-700)',
+                        fontSize: '0.8rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        marginTop: '12px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                      }}
+                    >
+                      <Sparkles size={12} /> {loadingIcebreakers ? 'Regenerating...' : 'Refresh AI Prompts'}
+                    </button>
                   </div>
                 ) : (
                   activeMessages.map((msg) => (
@@ -412,11 +462,64 @@ export default function MessagesPage() {
                 <div ref={messagesEndRef} />
               </div>
 
+              {/* Dynamic AI Icebreaker Drawer */}
+              {showIcebreakerDrawer && (
+                <div
+                  style={{
+                    backgroundColor: 'var(--primary-50)',
+                    borderTop: '1px solid var(--border-subtle)',
+                    padding: '12px 20px',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--primary-900)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Sparkles size={14} color="var(--accent-gold)" />
+                      Personalized AI Faith Starters
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowIcebreakerDrawer(false)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', color: 'var(--text-muted)' }}
+                    >
+                      Close ✕
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {aiIcebreakers.map((prompt, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => {
+                          setInputText(prompt);
+                          setShowIcebreakerDrawer(false);
+                        }}
+                        style={{
+                          backgroundColor: '#FFFFFF',
+                          border: '1px solid var(--border-subtle)',
+                          borderRadius: 'var(--radius-sm)',
+                          padding: '8px 12px',
+                          fontSize: '0.8rem',
+                          color: 'var(--primary-900)',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                        }}
+                      >
+                        <Sparkles size={12} color="var(--accent-gold)" style={{ flexShrink: 0 }} />
+                        <span>{prompt}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Chat Input */}
               <form
                 onSubmit={handleSend}
                 style={{
-                  padding: '14px 20px',
+                  padding: '12px 20px',
                   backgroundColor: '#FFFFFF',
                   borderTop: '1px solid var(--border-subtle)',
                   display: 'flex',
@@ -424,6 +527,30 @@ export default function MessagesPage() {
                   alignItems: 'center',
                 }}
               >
+                <button
+                  type="button"
+                  onClick={loadAiIcebreakers}
+                  disabled={loadingIcebreakers}
+                  title="Generate AI Faith Prompts"
+                  style={{
+                    backgroundColor: 'rgba(200, 155, 60, 0.12)',
+                    border: '1px solid rgba(200, 155, 60, 0.35)',
+                    color: 'var(--accent-gold-dark, #8C6A1E)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '8px 12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  <Sparkles size={14} />
+                  {loadingIcebreakers ? '...' : 'AI Starters'}
+                </button>
+
                 <input
                   type="text"
                   value={inputText}

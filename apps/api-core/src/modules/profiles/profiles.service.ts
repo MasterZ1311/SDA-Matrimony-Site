@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Gender, BaptismStatus, SabbathObservance, DietType, EducationLevel, VerificationStatus } from '@prisma/client';
 
@@ -64,6 +64,7 @@ export class ProfilesService {
         residenceCity: data.residenceCity !== undefined ? data.residenceCity : profile.residenceCity,
         bioSummary: data.bioSummary !== undefined ? data.bioSummary : profile.bioSummary,
         partnerExpectations: data.partnerExpectations !== undefined ? data.partnerExpectations : profile.partnerExpectations,
+        prompts: data.prompts !== undefined ? data.prompts : (profile as any).prompts,
       },
     });
 
@@ -205,8 +206,21 @@ export class ProfilesService {
     const limit = Number(query.limit) || 12;
     const skip = (page - 1) * limit;
 
+    // Filter out self and any users with mutual blocks
+    const blocks = await this.prisma.blockedUser.findMany({
+      where: {
+        OR: [{ userId: currentUserId }, { blockedUserId: currentUserId }],
+      },
+    });
+    const excludedUserIds = Array.from(
+      new Set([
+        currentUserId,
+        ...blocks.map((b) => (b.userId === currentUserId ? b.blockedUserId : b.userId)),
+      ])
+    );
+
     const whereClause: any = {
-      userId: { not: currentUserId },
+      userId: { notIn: excludedUserIds },
     };
 
     if (query.gender) {
@@ -230,6 +244,12 @@ export class ProfilesService {
 
     if (query.diet) {
       whereClause.lifestyleProfile = { diet: query.diet };
+    }
+
+    if (query.institution) {
+      whereClause.educationCareer = {
+        institution: { contains: query.institution, mode: 'insensitive' },
+      };
     }
 
     const [profiles, total] = await Promise.all([
@@ -261,5 +281,122 @@ export class ProfilesService {
         totalPages: Math.ceil(total / limit),
       },
     };
+  }
+
+  async reportProfile(reporterId: string, reportedProfileId: string, reason: string, details?: string) {
+    const targetProfile = await this.prisma.profile.findUnique({
+      where: { id: reportedProfileId },
+      include: { user: true },
+    });
+
+    if (!targetProfile) {
+      throw new NotFoundException('Reported member profile not found.');
+    }
+
+    if (targetProfile.userId === reporterId) {
+      throw new BadRequestException('You cannot report your own profile.');
+    }
+
+    const report = await this.prisma.report.create({
+      data: {
+        reporterId,
+        reportedUserId: targetProfile.userId,
+        reason,
+        details: details?.trim() || null,
+      },
+    });
+
+    return {
+      message: 'Report submitted confidentially to Pastoral Administration for safety review.',
+      reportId: report.id,
+    };
+  }
+
+  async blockUser(userId: string, targetProfileId: string) {
+    const targetProfile = await this.prisma.profile.findUnique({
+      where: { id: targetProfileId },
+    });
+
+    if (!targetProfile) {
+      throw new NotFoundException('Member profile not found.');
+    }
+
+    const blockedUserId = targetProfile.userId;
+    if (userId === blockedUserId) {
+      throw new BadRequestException('You cannot block yourself.');
+    }
+
+    await this.prisma.blockedUser.upsert({
+      where: {
+        userId_blockedUserId: {
+          userId,
+          blockedUserId,
+        },
+      },
+      update: {},
+      create: {
+        userId,
+        blockedUserId,
+      },
+    });
+
+    return {
+      message: 'Member has been blocked. They will no longer appear in your searches or be able to contact you.',
+      blockedUserId,
+    };
+  }
+
+  async unblockUser(userId: string, blockedUserId: string) {
+    await this.prisma.blockedUser.deleteMany({
+      where: {
+        userId,
+        blockedUserId,
+      },
+    });
+
+    return {
+      message: 'Member unblocked successfully.',
+      blockedUserId,
+    };
+  }
+
+  async getBlockedUsers(userId: string) {
+    const blocks = await this.prisma.blockedUser.findMany({
+      where: { userId },
+      include: {
+        blockedUser: {
+          include: {
+            profile: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                photos: { where: { isPrimary: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return blocks.map((b) => ({
+      blockId: b.id,
+      blockedAt: b.createdAt,
+      blockedUser: b.blockedUser,
+    }));
+  }
+
+  async getAdminReports() {
+    return this.prisma.report.findMany({
+      include: {
+        reporter: {
+          include: { profile: true },
+        },
+        reportedUser: {
+          include: { profile: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 }

@@ -303,5 +303,24 @@ class TestAPISecurity(unittest.TestCase):
         )
         self.assertEqual(valid_mod.status_code, 200)
 
+        # Icebreakers endpoint -> 200
+        ice_payload = {
+            "targetProfile": {
+                "firstName": "Hannah",
+                "educationCareer": {"occupation": "Pediatric Nurse", "institution": "Loma Linda University"},
+                "residenceCity": "Loma Linda"
+            }
+        }
+        valid_ice = client.post(
+            "/api/v1/compatibility/icebreakers",
+            json=ice_payload,
+            headers={"X-API-Key": settings.AI_SERVICE_SECRET},
+        )
+        self.assertEqual(valid_ice.status_code, 200)
+        ice_data = valid_ice.json()
+        self.assertEqual(ice_data["targetName"], "Hannah")
+        self.assertGreaterEqual(len(ice_data["icebreakers"]), 3)
+
+
 if __name__ == "__main__":
     unittest.main()

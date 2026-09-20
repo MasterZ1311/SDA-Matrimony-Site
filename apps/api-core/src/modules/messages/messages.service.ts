@@ -111,6 +111,20 @@ export class MessagesService {
       throw new ForbiddenException('You are not authorized to send messages in this conversation.');
     }
 
+    // Check if either user has blocked the other
+    const otherUserId = conversation.user1Id === userId ? conversation.user2Id : conversation.user1Id;
+    const block = await this.prisma.blockedUser.findFirst({
+      where: {
+        OR: [
+          { userId, blockedUserId: otherUserId },
+          { userId: otherUserId, blockedUserId: userId },
+        ],
+      },
+    });
+    if (block) {
+      throw new ForbiddenException('Communication restricted due to user blocking settings.');
+    }
+
     const message = await this.prisma.chatMessage.create({
       data: {
         conversationId,
@@ -136,4 +150,52 @@ export class MessagesService {
 
     return message;
   }
+
+  async getIcebreakers(userId: string, targetUserId: string) {
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      include: {
+        profile: {
+          include: {
+            educationCareer: true,
+            spiritualProfile: true,
+            lifestyleProfile: true,
+          },
+        },
+      },
+    });
+
+    if (!targetUser || !targetUser.profile) {
+      throw new NotFoundException('Candidate profile not found.');
+    }
+
+    const p = targetUser.profile;
+    const name = p.firstName || 'Candidate';
+    const occ = p.educationCareer?.occupation || '';
+    const inst = p.educationCareer?.institution || '';
+    const city = p.residenceCity || '';
+
+    const icebreakers: string[] = [
+      `Happy Sabbath ${name}! What are some of your favorite Sabbath traditions and afternoon nature spots?`,
+      `Greetings ${name}! I noticed your involvement with church ministry. How did you feel called into that service?`,
+      `Hello ${name}! What is a favorite Bible promise or scripture that has been blessing you recently?`,
+    ];
+
+    if (occ) {
+      icebreakers.push(`Hi ${name}, I saw that you work as a ${occ}. How do you see your career intersecting with your Christian mission?`);
+    } else if (inst) {
+      icebreakers.push(`Hi ${name}, I saw you attended ${inst}. What was your experience like with Adventist education?`);
+    } else if (city) {
+      icebreakers.push(`Hi ${name}, how is the Adventist church community around ${city}?`);
+    } else {
+      icebreakers.push(`Hello ${name}! It's a pleasure to connect with you. What are some of your favorite Christian hymns or praise songs?`);
+    }
+
+    return {
+      targetUserId,
+      targetName: name,
+      icebreakers,
+    };
+  }
 }
+

@@ -1,15 +1,17 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useMatrimonyStore } from '@/stores/matrimonyStore';
 import { useAuthStore } from '@/stores/authStore';
 import { BiodataModal } from '@/components/common/BiodataModal';
+import { ReportModal } from '@/components/common/ReportModal';
 import {
   Heart,
   FileDown,
   CheckCircle2,
   ShieldCheck,
+  ShieldAlert,
   MapPin,
   Briefcase,
   BookOpen,
@@ -20,14 +22,48 @@ import {
   Share2,
   AlertCircle,
   MessageSquare,
+  Star,
+  Sparkles,
+  MessageCircle,
 } from 'lucide-react';
 
+const SAMPLE_FAITH_PROMPTS = [
+  {
+    category: 'MY SABBATH WALK',
+    question: 'A typical Sabbath afternoon for me consists of...',
+    answer: 'Community service visitation with the youth, walking in nature to reflect on God’s creation, or singing hymns around a piano with fellowship members.',
+  },
+  {
+    category: 'CHRISTIAN HOME',
+    question: 'The non-negotiables in my future Adventist home are...',
+    answer: 'Friday evening family sundown worship, a peaceful plant-based kitchen, open hospitality for church visitors, and a home filled with scripture and praise.',
+  },
+  {
+    category: 'SPIRITUAL ANCHOR',
+    question: 'A spiritual discipline that anchored my faith in Jesus...',
+    answer: 'Consistent morning watch devotionals before touching any digital devices, and memorizing Bible promises during seasons of life decisions.',
+  },
+];
+
 export default function ProfileDetailPage({ params }: { params: { id: string } }) {
-  const { candidates, interests, expressInterest, addToast } = useMatrimonyStore();
+  const {
+    candidates,
+    interests,
+    expressInterest,
+    addToast,
+    shortlist,
+    toggleShortlist,
+    fetchShortlist,
+  } = useMatrimonyStore();
   const { user } = useAuthStore();
   const [showBiodataModal, setShowBiodataModal] = useState(false);
   const [customMsgModal, setCustomMsgModal] = useState(false);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
   const [introText, setIntroText] = useState('');
+
+  useEffect(() => {
+    fetchShortlist();
+  }, [fetchShortlist]);
 
   // Resolve ID
   const effectiveId = params.id === 'me' ? (user?.id || 'demo-user-1') : params.id;
@@ -36,6 +72,7 @@ export default function ProfileDetailPage({ params }: { params: { id: string } }
   );
 
   const isMe = params.id === 'me' || (user && user.id === candidate?.id);
+  const isFav = candidate ? shortlist.includes(candidate.id) : false;
 
   const alreadySent = interests.some(
     (i) => i.candidateId === candidate?.id && i.type === 'SENT'
@@ -51,6 +88,11 @@ export default function ProfileDetailPage({ params }: { params: { id: string } }
     expressInterest(candidate.id, introText);
     setCustomMsgModal(false);
     setIntroText('');
+  };
+
+  const handlePromptLike = (question: string) => {
+    setIntroText(`I really resonated with your response to: "${question}" — `);
+    setCustomMsgModal(true);
   };
 
   const handleCopyLink = () => {
@@ -86,7 +128,7 @@ export default function ProfileDetailPage({ params }: { params: { id: string } }
   }
 
   return (
-    <div style={{ padding: '36px 0', backgroundColor: 'var(--bg-page)', minHeight: 'calc(100vh - 150px)' }}>
+    <div style={{ padding: '36px 0 60px 0', backgroundColor: 'var(--bg-page)', minHeight: 'calc(100vh - 150px)' }}>
       <div className="container" style={{ maxWidth: '1020px' }}>
         {/* Navigation back and Share */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
@@ -104,13 +146,25 @@ export default function ProfileDetailPage({ params }: { params: { id: string } }
             <ArrowLeft size={16} /> Back to Candidates Directory
           </Link>
 
-          <button
-            onClick={handleCopyLink}
-            className="btn btn-outline"
-            style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-          >
-            <Share2 size={14} /> Share Profile
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              onClick={handleCopyLink}
+              className="btn btn-outline"
+              style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+            >
+              <Share2 size={14} /> Share Profile
+            </button>
+            {!isMe && (
+              <button
+                onClick={() => setReportModalOpen(true)}
+                className="btn btn-outline"
+                style={{ padding: '6px 12px', fontSize: '0.8rem', color: 'var(--text-muted)' }}
+                title="Confidential Pastoral Safety Report"
+              >
+                <ShieldAlert size={14} /> Report
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Profile Header Banner Card */}
@@ -176,7 +230,7 @@ export default function ProfileDetailPage({ params }: { params: { id: string } }
               </p>
 
               {/* Action buttons */}
-              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
                 {!isMe && (
                   <>
                     {isMutual ? (
@@ -196,6 +250,21 @@ export default function ProfileDetailPage({ params }: { params: { id: string } }
                         <Heart size={16} fill="#FFFFFF" /> Connect Now (Express Interest)
                       </button>
                     )}
+
+                    <button
+                      type="button"
+                      onClick={() => toggleShortlist(candidate.id)}
+                      className="btn btn-outline"
+                      style={{
+                        backgroundColor: isFav ? 'rgba(200, 155, 60, 0.15)' : 'transparent',
+                        borderColor: isFav ? 'var(--accent-gold)' : 'var(--border-subtle)',
+                        color: isFav ? '#8C6A1E' : 'var(--primary-900)',
+                      }}
+                      title={isFav ? 'Remove from shortlist' : 'Add to prayerful shortlist'}
+                    >
+                      <Star size={16} fill={isFav ? '#C5A059' : 'none'} color={isFav ? '#C5A059' : 'var(--text-muted)'} />
+                      {isFav ? 'Shortlisted' : 'Shortlist'}
+                    </button>
                   </>
                 )}
 
@@ -212,7 +281,7 @@ export default function ProfileDetailPage({ params }: { params: { id: string } }
         </div>
 
         {/* Detailed Profile Sections */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', marginBottom: '28px' }}>
           {/* Section 1: Spiritual Profile */}
           <div className="card" style={{ padding: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '18px' }}>
@@ -318,9 +387,9 @@ export default function ProfileDetailPage({ params }: { params: { id: string } }
               {candidate.institution && (
                 <div>
                   <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.725rem', fontWeight: 700, textTransform: 'uppercase' }}>
-                    ALMA MATER
+                    ALMA MATER (ADVENTIST COLLEGE)
                   </span>
-                  <span style={{ fontWeight: 600 }}>{candidate.institution}</span>
+                  <span style={{ fontWeight: 600, color: 'var(--primary-800)' }}>{candidate.institution}</span>
                 </div>
               )}
               <div>
@@ -368,6 +437,102 @@ export default function ProfileDetailPage({ params }: { params: { id: string } }
                 </div>
               )}
             </div>
+          </div>
+        </div>
+
+        {/* Section 5: Hinge-Style Faith & Purpose Prompt Cards */}
+        <div style={{ marginBottom: '32px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+            <Sparkles size={20} color="var(--accent-gold)" />
+            <div>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-900)', margin: 0 }}>
+                Faith & Calling Prompts
+              </h2>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                Conversational answers reflecting Christian character and courtship aspirations
+              </span>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+            {SAMPLE_FAITH_PROMPTS.map((prompt, idx) => (
+              <div
+                key={idx}
+                className="card animate-fade"
+                style={{
+                  padding: '24px',
+                  backgroundColor: '#FFFFFF',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 'var(--radius-lg)',
+                  boxShadow: 'var(--shadow-sm)',
+                }}
+              >
+                <div>
+                  <span
+                    style={{
+                      fontSize: '0.7rem',
+                      fontWeight: 800,
+                      color: 'var(--accent-gold-dark, #8C6A1E)',
+                      letterSpacing: '0.06em',
+                      display: 'block',
+                      marginBottom: '8px',
+                    }}
+                  >
+                    {prompt.category}
+                  </span>
+                  <h3
+                    style={{
+                      fontSize: '1rem',
+                      fontWeight: 700,
+                      color: 'var(--primary-900)',
+                      lineHeight: 1.4,
+                      marginBottom: '12px',
+                    }}
+                  >
+                    {prompt.question}
+                  </h3>
+                  <p
+                    style={{
+                      fontSize: '0.9rem',
+                      color: 'var(--text-secondary)',
+                      lineHeight: 1.6,
+                      fontStyle: 'italic',
+                      margin: 0,
+                    }}
+                  >
+                    "{prompt.answer}"
+                  </p>
+                </div>
+
+                {!isMe && (
+                  <div style={{ marginTop: '20px', paddingTop: '14px', borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'flex-end' }}>
+                    <button
+                      type="button"
+                      onClick={() => handlePromptLike(prompt.question)}
+                      style={{
+                        backgroundColor: 'var(--primary-50)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: 'var(--radius-full)',
+                        padding: '6px 14px',
+                        fontSize: '0.775rem',
+                        fontWeight: 700,
+                        color: 'var(--primary-900)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                      }}
+                    >
+                      <Heart size={14} color="var(--shaadi-crimson, #E53935)" /> Reply to this Prompt
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -442,6 +607,15 @@ export default function ProfileDetailPage({ params }: { params: { id: string } }
         isOpen={showBiodataModal}
         onClose={() => setShowBiodataModal(false)}
       />
+
+      {/* Confidential Pastoral Safety & Report Modal */}
+      {reportModalOpen && (
+        <ReportModal
+          candidateId={candidate.id}
+          candidateName={candidate.name}
+          onClose={() => setReportModalOpen(false)}
+        />
+      )}
     </div>
   );
 }
