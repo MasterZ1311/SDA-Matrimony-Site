@@ -5,14 +5,11 @@ import {
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { NotificationType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import axios from 'axios';
 
-export enum NotificationType {
-  INTEREST_RECEIVED = 'INTEREST_RECEIVED',
-  MATCH_SUGGESTED = 'MATCH_SUGGESTED',
-  NEW_MESSAGE = 'NEW_MESSAGE',
-}
+export { NotificationType };
 
 @Injectable()
 export class NotificationsService {
@@ -34,7 +31,7 @@ export class NotificationsService {
     link: string,
     relatedId?: string,
   ) {
-    const notification = await (this.prisma as any).notification.create({
+    const notification = await this.prisma.notification.create({
       data: {
         userId,
         type,
@@ -45,7 +42,7 @@ export class NotificationsService {
       },
     });
 
-    const unreadCount = await (this.prisma as any).notification.count({
+    const unreadCount = await this.prisma.notification.count({
       where: { userId, isRead: false },
     });
 
@@ -63,7 +60,7 @@ export class NotificationsService {
    * Returns recent notifications for the authenticated user, limited to latest 30.
    */
   async getNotifications(userId: string, limit = 30) {
-    return (this.prisma as any).notification.findMany({
+    return this.prisma.notification.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
       take: limit,
@@ -74,7 +71,7 @@ export class NotificationsService {
    * Returns the count of unread notifications for the authenticated user.
    */
   async getUnreadCount(userId: string): Promise<{ count: number }> {
-    const count = await (this.prisma as any).notification.count({
+    const count = await this.prisma.notification.count({
       where: { userId, isRead: false },
     });
     return { count };
@@ -84,7 +81,7 @@ export class NotificationsService {
    * Marks a single notification as read, enforcing strict user ownership.
    */
   async markAsRead(userId: string, notificationId: string) {
-    const notification = await (this.prisma as any).notification.findUnique({
+    const notification = await this.prisma.notification.findUnique({
       where: { id: notificationId },
     });
 
@@ -98,12 +95,12 @@ export class NotificationsService {
       );
     }
 
-    const updated = await (this.prisma as any).notification.update({
+    const updated = await this.prisma.notification.update({
       where: { id: notificationId },
       data: { isRead: true },
     });
 
-    const unreadCount = await (this.prisma as any).notification.count({
+    const unreadCount = await this.prisma.notification.count({
       where: { userId, isRead: false },
     });
 
@@ -116,7 +113,7 @@ export class NotificationsService {
    * Marks all unread notifications for the user as read.
    */
   async markAllAsRead(userId: string) {
-    const result = await (this.prisma as any).notification.updateMany({
+    const result = await this.prisma.notification.updateMany({
       where: { userId, isRead: false },
       data: { isRead: true },
     });
