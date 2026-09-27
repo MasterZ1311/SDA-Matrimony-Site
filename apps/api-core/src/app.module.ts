@@ -12,6 +12,7 @@ import { MessagesModule } from './modules/messages/messages.module';
 import { MailModule } from './modules/mail/mail.module';
 import { FirebaseModule } from './common/firebase/firebase.module';
 import { MatchmakingModule } from './modules/matchmaking/matchmaking.module';
+import { PromptsModule } from './modules/prompts/prompts.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { MatchmakingModule } from './modules/matchmaking/matchmaking.module';
     MessagesModule,
     MailModule,
     MatchmakingModule,
+    PromptsModule,
   ],
 })
 export class AppModule {}

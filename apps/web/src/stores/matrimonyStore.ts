@@ -131,7 +131,31 @@ export interface MatchSuggestionItem {
   admin?: { id: string; email: string };
   user?: MatchSuggestionCandidate;
   suggestedUser?: MatchSuggestionCandidate;
-  otherUser?: MatchSuggestionCandidate;
+}
+
+export interface PromptAnswerItem {
+  id: string;
+  profileId: string;
+  promptKey: string;
+  category: string;
+  question: string;
+  answer: string;
+  order: number;
+  reactionCount: number;
+  reactedByMe: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface PhotoWithReactions {
+  id: string;
+  profileId?: string;
+  url: string;
+  thumbnailUrl?: string;
+  isPrimary: boolean;
+  isApproved?: boolean;
+  reactionCount: number;
+  reactedByMe: boolean;
 }
 
 export interface ToastMessage {
@@ -167,6 +191,7 @@ export interface MatrimonyStoreState {
   matchSuggestions: MatchSuggestionItem[];
   curatedSuggestions: MatchSuggestionItem[];
   isMatchmakingLoading: boolean;
+  myPrompts: PromptAnswerItem[];
 
   // Actions
   fetchCandidates: () => Promise<void>;
@@ -184,6 +209,10 @@ export interface MatrimonyStoreState {
   fetchCuratedSuggestions: () => Promise<void>;
   createMatchSuggestion: (userId: string, suggestedUserId: string, adminNote?: string) => Promise<boolean>;
   respondToMatchSuggestion: (suggestionId: string, accepted: boolean) => Promise<boolean>;
+  fetchMyPrompts: () => Promise<PromptAnswerItem[]>;
+  savePromptAnswers: (prompts: { promptKey: string; answer: string }[]) => Promise<boolean>;
+  toggleReaction: (target: { photoId?: string; promptAnswerId?: string }) => Promise<{ success: boolean; liked: boolean; reactionCount: number }>;
+  fetchProfileDetails: (id: string) => Promise<any>;
   addToast: (toast: Omit<ToastMessage, 'id'>) => void;
   removeToast: (id: string) => void;
   expressInterest: (candidateId: string, customMessage?: string) => Promise<boolean>;
@@ -217,6 +246,7 @@ export const useMatrimonyStore = create<MatrimonyStoreState>((set, get) => ({
   matchSuggestions: [],
   curatedSuggestions: [],
   isMatchmakingLoading: false,
+  myPrompts: [],
 
   fetchCandidates: async () => {
     set({ isLoading: true });
@@ -777,6 +807,90 @@ export const useMatrimonyStore = create<MatrimonyStoreState>((set, get) => ({
       'Greetings! I noticed your involvement with church ministry. How did you feel called into that service?',
       'Hello! What is a favorite Bible promise or scripture that has been blessing you recently?',
     ];
+  },
+
+  fetchMyPrompts: async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/profile/prompts`, {
+        headers: getAuthHeaders(),
+        timeout: 5000,
+      });
+      if (Array.isArray(res.data)) {
+        set({ myPrompts: res.data });
+        return res.data;
+      }
+    } catch {
+      // Fallback
+    }
+    return [];
+  },
+
+  savePromptAnswers: async (prompts: { promptKey: string; answer: string }[]) => {
+    try {
+      const res = await axios.post(
+        `${API_BASE}/profile/prompts`,
+        prompts,
+        { headers: getAuthHeaders(), timeout: 6000 }
+      );
+      if (Array.isArray(res.data)) {
+        set({ myPrompts: res.data });
+        get().addToast({
+          title: 'Faith Prompts Saved! ✨',
+          description: 'Your faith and calling prompt answers have been published to your profile.',
+          type: 'success',
+        });
+        return true;
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || 'Failed to update faith prompts.';
+      get().addToast({
+        title: 'Error Saving Prompts',
+        description: Array.isArray(msg) ? msg.join(', ') : msg,
+        type: 'error',
+      });
+      return false;
+    }
+    return false;
+  },
+
+  toggleReaction: async (target: { photoId?: string; promptAnswerId?: string }) => {
+    try {
+      const res = await axios.post(
+        `${API_BASE}/reactions`,
+        target,
+        { headers: getAuthHeaders(), timeout: 5000 }
+      );
+      if (res.data) {
+        return {
+          success: true,
+          liked: Boolean(res.data.liked),
+          reactionCount: Number(res.data.reactionCount || 0),
+        };
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || 'Unable to update reaction.';
+      get().addToast({
+        title: 'Reaction Failed',
+        description: Array.isArray(msg) ? msg.join(', ') : msg,
+        type: 'error',
+      });
+    }
+    return { success: false, liked: false, reactionCount: 0 };
+  },
+
+  fetchProfileDetails: async (id: string) => {
+    try {
+      const res = await axios.get(`${API_BASE}/profiles/${id}`, {
+        headers: getAuthHeaders(),
+        timeout: 5000,
+      });
+      if (res.data) {
+        return res.data;
+      }
+    } catch {
+      // Fallback
+    }
+    return null;
   },
 }));
 

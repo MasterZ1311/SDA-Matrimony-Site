@@ -7,6 +7,8 @@ import { useAuthStore } from '@/stores/authStore';
 import { BiodataModal } from '@/components/common/BiodataModal';
 import { ReportModal } from '@/components/common/ReportModal';
 import { SuggestMatchModal } from '@/components/admin/SuggestMatchModal';
+import { PromptSelectorModal } from '@/components/profile/PromptSelectorModal';
+import { PromptAnswerItem, PhotoWithReactions } from '@/stores/matrimonyStore';
 import {
   Heart,
   FileDown,
@@ -55,12 +57,16 @@ export default function ProfileDetailPage({ params }: { params: { id: string } }
     shortlist,
     toggleShortlist,
     fetchShortlist,
+    toggleReaction,
+    fetchProfileDetails,
   } = useMatrimonyStore();
   const { user } = useAuthStore();
   const [showBiodataModal, setShowBiodataModal] = useState(false);
   const [customMsgModal, setCustomMsgModal] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [showSuggestModal, setShowSuggestModal] = useState(false);
+  const [showPromptSelector, setShowPromptSelector] = useState(false);
+  const [reactingTargetId, setReactingTargetId] = useState<string | null>(null);
   const [introText, setIntroText] = useState('');
 
   useEffect(() => {
@@ -76,6 +82,52 @@ export default function ProfileDetailPage({ params }: { params: { id: string } }
   const isMe = params.id === 'me' || (user && user.id === candidate?.id);
   const isFav = candidate ? shortlist.includes(candidate.id) : false;
 
+  // State for photos and prompts with reaction counts
+  const [photoList, setPhotoList] = useState<PhotoWithReactions[]>([]);
+  const [promptList, setPromptList] = useState<PromptAnswerItem[]>([]);
+
+  useEffect(() => {
+    if (candidate) {
+      // Initialize with candidate data
+      setPhotoList([
+        {
+          id: `photo-${candidate.id}-1`,
+          url: candidate.imageUrl,
+          isPrimary: true,
+          reactionCount: 5,
+          reactedByMe: false,
+        },
+      ]);
+      setPromptList(
+        SAMPLE_FAITH_PROMPTS.map((p, idx) => ({
+          id: `prompt-${candidate.id}-${idx}`,
+          profileId: candidate.id,
+          promptKey: p.category.replace(/[^A-Z]/g, '_'),
+          category: p.category,
+          question: p.question,
+          answer: p.answer,
+          order: idx,
+          reactionCount: 4 - idx,
+          reactedByMe: false,
+        }))
+      );
+
+      // Attempt live fetch from backend
+      fetchProfileDetails(candidate.id)
+        .then((data) => {
+          if (data) {
+            if (data.photos && data.photos.length > 0) {
+              setPhotoList(data.photos);
+            }
+            if (data.promptAnswers && data.promptAnswers.length > 0) {
+              setPromptList(data.promptAnswers);
+            }
+          }
+        })
+        .catch(() => {});
+    }
+  }, [candidate, fetchProfileDetails]);
+
   const alreadySent = interests.some(
     (i) => i.candidateId === candidate?.id && i.type === 'SENT'
   );
@@ -83,6 +135,61 @@ export default function ProfileDetailPage({ params }: { params: { id: string } }
   const isMutual = interests.some(
     (i) => i.candidateId === candidate?.id && i.status === 'ACCEPTED'
   );
+
+  const handleToggleReaction = async (target: { photoId?: string; promptAnswerId?: string }) => {
+    const targetId = target.photoId || target.promptAnswerId;
+    if (!targetId || reactingTargetId === targetId) return;
+    setReactingTargetId(targetId);
+
+    // Optimistic state toggle
+    if (target.photoId) {
+      setPhotoList((prev) =>
+        prev.map((p) =>
+          p.id === target.photoId
+            ? {
+                ...p,
+                reactedByMe: !p.reactedByMe,
+                reactionCount: p.reactedByMe ? Math.max(0, p.reactionCount - 1) : p.reactionCount + 1,
+              }
+            : p
+        )
+      );
+    } else if (target.promptAnswerId) {
+      setPromptList((prev) =>
+        prev.map((p) =>
+          p.id === target.promptAnswerId
+            ? {
+                ...p,
+                reactedByMe: !p.reactedByMe,
+                reactionCount: p.reactedByMe ? Math.max(0, p.reactionCount - 1) : p.reactionCount + 1,
+              }
+            : p
+        )
+      );
+    }
+
+    const res = await toggleReaction(target);
+    if (res.success) {
+      if (target.photoId) {
+        setPhotoList((prev) =>
+          prev.map((p) =>
+            p.id === target.photoId
+              ? { ...p, reactedByMe: res.liked, reactionCount: res.reactionCount }
+              : p
+          )
+        );
+      } else if (target.promptAnswerId) {
+        setPromptList((prev) =>
+          prev.map((p) =>
+            p.id === target.promptAnswerId
+              ? { ...p, reactedByMe: res.liked, reactionCount: res.reactionCount }
+              : p
+          )
+        );
+      }
+    }
+    setReactingTargetId(null);
+  };
 
   const handleSendInterest = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -278,6 +385,26 @@ export default function ProfileDetailPage({ params }: { params: { id: string } }
                   <FileDown size={16} /> View & Print Biodata
                 </button>
 
+                {/* Edit Faith Prompts Quick Action for Logged-In User */}
+                {isMe && (
+                  <button
+                    type="button"
+                    onClick={() => setShowPromptSelector(true)}
+                    className="btn btn-outline"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      color: 'var(--primary-900)',
+                      borderColor: 'var(--accent-gold)',
+                      backgroundColor: 'var(--accent-gold-light)',
+                      fontWeight: 700,
+                    }}
+                  >
+                    <Sparkles size={16} color="var(--primary-800)" /> Edit Faith Prompts
+                  </button>
+                )}
+
                 {/* Admin-only Matchmaker Action */}
                 {user?.role === 'ADMIN' && !isMe && (
                   <button
@@ -459,99 +586,294 @@ export default function ProfileDetailPage({ params }: { params: { id: string } }
           </div>
         </div>
 
-        {/* Section 5: Hinge-Style Faith & Purpose Prompt Cards */}
+        {/* Section 5: Interleaved Photos & Faith Prompts Feed with Reactions */}
         <div style={{ marginBottom: '32px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-            <Sparkles size={20} color="var(--accent-gold)" />
-            <div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-900)', margin: 0 }}>
-                Faith & Calling Prompts
-              </h2>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                Conversational answers reflecting Christian character and courtship aspirations
-              </span>
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
-            {SAMPLE_FAITH_PROMPTS.map((prompt, idx) => (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px', flexWrap: 'wrap', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div
-                key={idx}
-                className="card animate-fade"
                 style={{
-                  padding: '24px',
-                  backgroundColor: '#FFFFFF',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '8px',
+                  backgroundColor: 'var(--accent-gold-light)',
                   display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  border: '1px solid var(--border-subtle)',
-                  borderRadius: 'var(--radius-lg)',
-                  boxShadow: 'var(--shadow-sm)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                 }}
               >
-                <div>
-                  <span
-                    style={{
-                      fontSize: '0.7rem',
-                      fontWeight: 800,
-                      color: 'var(--accent-gold-dark, #8C6A1E)',
-                      letterSpacing: '0.06em',
-                      display: 'block',
-                      marginBottom: '8px',
-                    }}
-                  >
-                    {prompt.category}
-                  </span>
-                  <h3
-                    style={{
-                      fontSize: '1rem',
-                      fontWeight: 700,
-                      color: 'var(--primary-900)',
-                      lineHeight: 1.4,
-                      marginBottom: '12px',
-                    }}
-                  >
-                    {prompt.question}
-                  </h3>
-                  <p
-                    style={{
-                      fontSize: '0.9rem',
-                      color: 'var(--text-secondary)',
-                      lineHeight: 1.6,
-                      fontStyle: 'italic',
-                      margin: 0,
-                    }}
-                  >
-                    "{prompt.answer}"
-                  </p>
-                </div>
+                <Sparkles size={18} color="var(--primary-800)" />
+              </div>
+              <div>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-900)', margin: 0 }}>
+                  Faith Journey & Calling Prompts
+                </h2>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                  Reflections and photos revealing personal Christian devotion, character, and courtship expectations
+                </span>
+              </div>
+            </div>
 
-                {!isMe && (
-                  <div style={{ marginTop: '20px', paddingTop: '14px', borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'flex-end' }}>
-                    <button
-                      type="button"
-                      onClick={() => handlePromptLike(prompt.question)}
+            {isMe && (
+              <button
+                type="button"
+                onClick={() => setShowPromptSelector(true)}
+                className="btn btn-primary"
+                style={{
+                  padding: '7px 16px',
+                  fontSize: '0.8rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <Sparkles size={14} color="var(--accent-gold)" /> Manage My Prompts
+              </button>
+            )}
+          </div>
+
+          {/* Interleaved Vertical Cards Layout */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+            {(() => {
+              const maxItems = Math.max(photoList.length, promptList.length);
+              const interleavedCards: React.ReactNode[] = [];
+
+              for (let i = 0; i < maxItems; i++) {
+                // Interleaved Photo Card
+                if (photoList[i]) {
+                  const photo = photoList[i];
+                  interleavedCards.push(
+                    <div
+                      key={`photo-${photo.id || i}`}
+                      className="card animate-fade"
                       style={{
-                        backgroundColor: 'var(--primary-50)',
+                        padding: '16px',
+                        backgroundColor: '#FFFFFF',
                         border: '1px solid var(--border-subtle)',
-                        borderRadius: 'var(--radius-full)',
-                        padding: '6px 14px',
-                        fontSize: '0.775rem',
-                        fontWeight: 700,
-                        color: 'var(--primary-900)',
+                        borderRadius: 'var(--radius-lg)',
+                        boxShadow: 'var(--shadow-sm)',
                         display: 'flex',
+                        flexDirection: 'column',
                         alignItems: 'center',
-                        gap: '6px',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
                       }}
                     >
-                      <Heart size={14} color="var(--shaadi-crimson, #E53935)" /> Reply to this Prompt
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
+                      <div
+                        style={{
+                          width: '100%',
+                          maxHeight: '440px',
+                          minHeight: '260px',
+                          borderRadius: 'var(--radius-md)',
+                          backgroundImage: `url(${photo.url})`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                          position: 'relative',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        {photo.isPrimary && (
+                          <span
+                            style={{
+                              position: 'absolute',
+                              top: '12px',
+                              left: '12px',
+                              backgroundColor: 'rgba(15, 23, 42, 0.75)',
+                              backdropFilter: 'blur(4px)',
+                              color: '#FFFFFF',
+                              fontSize: '0.725rem',
+                              fontWeight: 700,
+                              padding: '4px 10px',
+                              borderRadius: '20px',
+                              letterSpacing: '0.04em',
+                            }}
+                          >
+                            PRIMARY PHOTO
+                          </span>
+                        )}
+
+                        {/* Heart Reaction Button Overlay */}
+                        <button
+                          type="button"
+                          onClick={() => handleToggleReaction({ photoId: photo.id })}
+                          aria-label="React to this photo"
+                          style={{
+                            position: 'absolute',
+                            bottom: '12px',
+                            right: '12px',
+                            backgroundColor: 'rgba(255, 255, 255, 0.92)',
+                            backdropFilter: 'blur(6px)',
+                            border: '1px solid rgba(0, 0, 0, 0.08)',
+                            borderRadius: '24px',
+                            padding: '6px 14px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            cursor: 'pointer',
+                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                          }}
+                        >
+                          <Heart
+                            size={16}
+                            fill={photo.reactedByMe ? 'var(--shaadi-crimson, #E53935)' : 'none'}
+                            color={photo.reactedByMe ? 'var(--shaadi-crimson, #E53935)' : '#475569'}
+                          />
+                          <span
+                            style={{
+                              fontSize: '0.8rem',
+                              fontWeight: 700,
+                              color: photo.reactedByMe ? 'var(--shaadi-crimson, #E53935)' : '#334155',
+                            }}
+                          >
+                            {photo.reactionCount}
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
+
+                // Interleaved Prompt Card
+                if (promptList[i]) {
+                  const prompt = promptList[i];
+                  interleavedCards.push(
+                    <div
+                      key={`prompt-${prompt.id || i}`}
+                      className="card animate-fade"
+                      style={{
+                        padding: '24px 28px',
+                        backgroundColor: '#FFFFFF',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: 'var(--radius-lg)',
+                        boxShadow: 'var(--shadow-sm)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        gap: '16px',
+                        borderLeft: '4px solid var(--accent-gold)',
+                      }}
+                    >
+                      <div>
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            marginBottom: '8px',
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: '0.725rem',
+                              fontWeight: 800,
+                              color: 'var(--accent-gold-dark, #8C6A1E)',
+                              letterSpacing: '0.06em',
+                              textTransform: 'uppercase',
+                            }}
+                          >
+                            {prompt.category || 'FAITH & LIFE'}
+                          </span>
+                        </div>
+
+                        <h3
+                          style={{
+                            fontSize: '1.05rem',
+                            fontWeight: 700,
+                            color: 'var(--primary-900)',
+                            lineHeight: 1.4,
+                            marginBottom: '12px',
+                          }}
+                        >
+                          {prompt.question}
+                        </h3>
+
+                        <p
+                          style={{
+                            fontSize: '0.925rem',
+                            color: 'var(--text-secondary)',
+                            lineHeight: 1.65,
+                            fontStyle: 'italic',
+                            margin: 0,
+                          }}
+                        >
+                          "{prompt.answer}"
+                        </p>
+                      </div>
+
+                      {/* Prompt Footer with Reply and Heart Reaction */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          paddingTop: '14px',
+                          borderTop: '1px solid var(--border-subtle)',
+                          marginTop: '4px',
+                        }}
+                      >
+                        {!isMe ? (
+                          <button
+                            type="button"
+                            onClick={() => handlePromptLike(prompt.question)}
+                            style={{
+                              backgroundColor: 'transparent',
+                              border: 'none',
+                              padding: 0,
+                              fontSize: '0.8rem',
+                              fontWeight: 700,
+                              color: 'var(--primary-800)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <MessageSquare size={15} color="var(--primary-800)" /> Reply to this Prompt
+                          </button>
+                        ) : (
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                            Active on your public profile
+                          </span>
+                        )}
+
+                        {/* Subtle Heart Reaction Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleToggleReaction({ promptAnswerId: prompt.id })}
+                          aria-label="React to this prompt"
+                          style={{
+                            backgroundColor: prompt.reactedByMe ? '#FEE2E2' : 'var(--primary-50)',
+                            border: `1px solid ${prompt.reactedByMe ? '#FCA5A5' : 'var(--border-subtle)'}`,
+                            borderRadius: '20px',
+                            padding: '5px 12px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                          }}
+                        >
+                          <Heart
+                            size={15}
+                            fill={prompt.reactedByMe ? 'var(--shaadi-crimson, #E53935)' : 'none'}
+                            color={prompt.reactedByMe ? 'var(--shaadi-crimson, #E53935)' : '#475569'}
+                          />
+                          <span
+                            style={{
+                              fontSize: '0.775rem',
+                              fontWeight: 700,
+                              color: prompt.reactedByMe ? 'var(--shaadi-crimson, #E53935)' : '#334155',
+                            }}
+                          >
+                            {prompt.reactionCount}
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
+              }
+
+              return interleavedCards;
+            })()}
           </div>
         </div>
       </div>
@@ -641,6 +963,18 @@ export default function ProfileDetailPage({ params }: { params: { id: string } }
         targetCandidate={candidate}
         isOpen={showSuggestModal}
         onClose={() => setShowSuggestModal(false)}
+      />
+
+      {/* Faith Prompts Selector & Editor Modal */}
+      <PromptSelectorModal
+        isOpen={showPromptSelector}
+        onClose={() => setShowPromptSelector(false)}
+        initialPrompts={promptList}
+        onSaved={(updated) => {
+          if (updated && updated.length > 0) {
+            setPromptList(updated);
+          }
+        }}
       />
     </div>
   );
