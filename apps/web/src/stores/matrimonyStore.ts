@@ -131,6 +131,7 @@ export interface MatchSuggestionItem {
   admin?: { id: string; email: string };
   user?: MatchSuggestionCandidate;
   suggestedUser?: MatchSuggestionCandidate;
+  otherUser?: MatchSuggestionCandidate;
 }
 
 export interface PromptAnswerItem {
