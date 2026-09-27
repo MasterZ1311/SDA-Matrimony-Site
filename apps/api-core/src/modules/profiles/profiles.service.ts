@@ -1,13 +1,59 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Gender, BaptismStatus, SabbathObservance, DietType, EducationLevel, VerificationStatus } from '@prisma/client';
+import { FAITH_PROMPT_MAP } from '../prompts/prompts.constants';
 
 @Injectable()
 export class ProfilesService {
   constructor(private prisma: PrismaService) {}
 
+  private formatProfileWithReactions(profile: any, viewerUserId?: string) {
+    const photos = (profile.photos || []).map((photo: any) => {
+      const reactions = photo.reactions || [];
+      return {
+        id: photo.id,
+        profileId: photo.profileId,
+        url: photo.url,
+        thumbnailUrl: photo.thumbnailUrl,
+        isPrimary: photo.isPrimary,
+        privacy: photo.privacy,
+        isApproved: photo.isApproved,
+        createdAt: photo.createdAt,
+        reactionCount: reactions.length,
+        reactedByMe: viewerUserId ? reactions.some((r: any) => r.userId === viewerUserId) : false,
+      };
+    });
+
+    const promptAnswers = (profile.promptAnswers || []).map((ans: any) => {
+      const meta = FAITH_PROMPT_MAP[ans.promptKey] || {
+        category: 'FAITH & LIFE',
+        question: ans.promptKey,
+      };
+      const reactions = ans.reactions || [];
+      return {
+        id: ans.id,
+        profileId: ans.profileId,
+        promptKey: ans.promptKey,
+        category: meta.category,
+        question: meta.question,
+        answer: ans.answer,
+        order: ans.order,
+        reactionCount: reactions.length,
+        reactedByMe: viewerUserId ? reactions.some((r: any) => r.userId === viewerUserId) : false,
+        createdAt: ans.createdAt,
+        updatedAt: ans.updatedAt,
+      };
+    });
+
+    return {
+      ...profile,
+      photos,
+      promptAnswers,
+    };
+  }
+
   async getMyProfile(userId: string) {
-    const profile = await this.prisma.profile.findUnique({
+    const profile = await (this.prisma as any).profile.findUnique({
       where: { userId },
       include: {
         spiritualProfile: {
@@ -21,7 +67,22 @@ export class ProfilesService {
         lifestyleProfile: true,
         educationCareer: true,
         familyBackground: true,
-        photos: true,
+        photos: {
+          include: {
+            reactions: {
+              select: { userId: true },
+            },
+          },
+          orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+        },
+        promptAnswers: {
+          include: {
+            reactions: {
+              select: { userId: true },
+            },
+          },
+          orderBy: { order: 'asc' },
+        },
       },
     });
 
@@ -29,7 +90,7 @@ export class ProfilesService {
       throw new NotFoundException('Member profile not found.');
     }
 
-    return profile;
+    return this.formatProfileWithReactions(profile, userId);
   }
 
   async updateProfile(userId: string, data: any) {
@@ -64,7 +125,6 @@ export class ProfilesService {
         residenceCity: data.residenceCity !== undefined ? data.residenceCity : profile.residenceCity,
         bioSummary: data.bioSummary !== undefined ? data.bioSummary : profile.bioSummary,
         partnerExpectations: data.partnerExpectations !== undefined ? data.partnerExpectations : profile.partnerExpectations,
-        prompts: data.prompts !== undefined ? data.prompts : (profile as any).prompts,
       },
     });
 
@@ -175,8 +235,8 @@ export class ProfilesService {
     return this.getMyProfile(userId);
   }
 
-  async getProfileById(targetProfileId: string) {
-    const profile = await this.prisma.profile.findUnique({
+  async getProfileById(targetProfileId: string, viewerUserId?: string) {
+    let profile = await (this.prisma as any).profile.findUnique({
       where: { id: targetProfileId },
       include: {
         spiritualProfile: {
@@ -190,15 +250,65 @@ export class ProfilesService {
         lifestyleProfile: true,
         educationCareer: true,
         familyBackground: true,
-        photos: true,
+        photos: {
+          include: {
+            reactions: {
+              select: { userId: true },
+            },
+          },
+          orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+        },
+        promptAnswers: {
+          include: {
+            reactions: {
+              select: { userId: true },
+            },
+          },
+          orderBy: { order: 'asc' },
+        },
       },
     });
+
+    if (!profile) {
+      profile = await (this.prisma as any).profile.findUnique({
+        where: { userId: targetProfileId },
+        include: {
+          spiritualProfile: {
+            include: {
+              division: true,
+              union: true,
+              conference: true,
+              localChurch: true,
+            },
+          },
+          lifestyleProfile: true,
+          educationCareer: true,
+          familyBackground: true,
+          photos: {
+            include: {
+              reactions: {
+                select: { userId: true },
+              },
+            },
+            orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+          },
+          promptAnswers: {
+            include: {
+              reactions: {
+                select: { userId: true },
+              },
+            },
+            orderBy: { order: 'asc' },
+          },
+        },
+      });
+    }
 
     if (!profile) {
       throw new NotFoundException('Member profile not found.');
     }
 
-    return profile;
+    return this.formatProfileWithReactions(profile, viewerUserId);
   }
 
   async searchProfiles(currentUserId: string, query: any) {

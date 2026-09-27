@@ -127,6 +127,7 @@ model User {
   createdMatchSuggestions   MatchSuggestion[]     @relation("AdminMatchSuggestions")
   receivedMatchSuggestions  MatchSuggestion[]     @relation("UserMatchSuggestions")
   suggestedAsMatch          MatchSuggestion[]     @relation("SuggestedMatchCandidates")
+  reactions                 Reaction[]
 
 
   @@index([email])
@@ -150,7 +151,6 @@ model Profile {
   residenceCity       String             @default("Silver Spring")
   bioSummary          String?            @db.Text
   partnerExpectations String?            @db.Text
-  prompts             Json?
   verificationStatus  VerificationStatus @default(UNVERIFIED)
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
@@ -160,6 +160,7 @@ model Profile {
   educationCareer     EducationCareer?
   familyBackground    FamilyBackground?
   photos              Photo[]
+  promptAnswers       PromptAnswer[]
 
   @@index([gender, verificationStatus])
   @@index([residenceCountry, residenceCity])
@@ -255,6 +256,7 @@ model Photo {
   privacy      PhotoPrivacy @default(PUBLIC_TO_ALL)
   isApproved   Boolean      @default(true)
   createdAt    DateTime     @default(now())
+  reactions    Reaction[]
 
   @@index([profileId, isPrimary])
 }
@@ -433,5 +435,36 @@ model MatchSuggestion {
   @@index([userId, status])
   @@index([adminId])
   @@index([suggestedUserId])
+}
+
+model PromptAnswer {
+  id        String     @id @default(uuid())
+  profileId String
+  profile   Profile    @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  promptKey String
+  answer    String     @db.Text
+  order     Int        @default(0)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  reactions Reaction[]
+
+  @@unique([profileId, promptKey])
+  @@index([profileId])
+}
+
+model Reaction {
+  id             String        @id @default(uuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  photoId        String?
+  photo          Photo?        @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  promptAnswerId String?
+  promptAnswer   PromptAnswer? @relation(fields: [promptAnswerId], references: [id], onDelete: Cascade)
+  createdAt      DateTime      @default(now())
+
+  @@unique([userId, photoId])
+  @@unique([userId, promptAnswerId])
+  @@index([photoId])
+  @@index([promptAnswerId])
 }
 

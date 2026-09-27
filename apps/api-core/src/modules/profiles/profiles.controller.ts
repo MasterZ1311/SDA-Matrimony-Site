@@ -104,8 +104,11 @@ export class ProfilesController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get detailed member profile by ID' })
-  async getProfileById(@Param('id') profileId: string) {
-    return this.profilesService.getProfileById(profileId);
+  async getProfileById(
+    @Param('id') profileId: string,
+    @CurrentUser('id') viewerUserId: string,
+  ) {
+    return this.profilesService.getProfileById(profileId, viewerUserId);
   }
 }
 
