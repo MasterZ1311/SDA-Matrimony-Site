@@ -100,6 +100,40 @@ export interface VerificationRequest {
   submittedAt: string;
 }
 
+export interface MatchSuggestionCandidate {
+  id: string;
+  email?: string;
+  role?: string;
+  profile?: {
+    id?: string;
+    firstName: string;
+    lastName: string;
+    gender: 'MALE' | 'FEMALE';
+    dateOfBirth?: string;
+    residenceCity: string;
+    residenceCountry: string;
+    maritalStatus?: string;
+    bioSummary?: string;
+    verificationStatus?: string;
+    photos?: { id: string; url: string; isApproved: boolean }[];
+  };
+}
+
+export interface MatchSuggestionItem {
+  id: string;
+  adminId: string;
+  userId: string;
+  suggestedUserId: string;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  adminNote?: string;
+  createdAt: string;
+  updatedAt?: string;
+  admin?: { id: string; email: string };
+  user?: MatchSuggestionCandidate;
+  suggestedUser?: MatchSuggestionCandidate;
+  otherUser?: MatchSuggestionCandidate;
+}
+
 export interface ToastMessage {
   id: string;
   title: string;
@@ -130,6 +164,9 @@ export interface MatrimonyStoreState {
       date: string;
     }>;
   };
+  matchSuggestions: MatchSuggestionItem[];
+  curatedSuggestions: MatchSuggestionItem[];
+  isMatchmakingLoading: boolean;
 
   // Actions
   fetchCandidates: () => Promise<void>;
@@ -143,6 +180,10 @@ export interface MatrimonyStoreState {
   unblockCandidate: (candidateId: string) => Promise<boolean>;
   fetchNotifications: () => Promise<void>;
   fetchAiIcebreakers: (candidateId: string) => Promise<string[]>;
+  fetchAdminMatchSuggestions: (status?: string) => Promise<void>;
+  fetchCuratedSuggestions: () => Promise<void>;
+  createMatchSuggestion: (userId: string, suggestedUserId: string, adminNote?: string) => Promise<boolean>;
+  respondToMatchSuggestion: (suggestionId: string, accepted: boolean) => Promise<boolean>;
   addToast: (toast: Omit<ToastMessage, 'id'>) => void;
   removeToast: (id: string) => void;
   expressInterest: (candidateId: string, customMessage?: string) => Promise<boolean>;
@@ -173,6 +214,9 @@ export const useMatrimonyStore = create<MatrimonyStoreState>((set, get) => ({
   isLoading: false,
   shortlist: [],
   notifications: { totalUnread: 0, pendingCount: 0, matchCount: 0, notifications: [] },
+  matchSuggestions: [],
+  curatedSuggestions: [],
+  isMatchmakingLoading: false,
 
   fetchCandidates: async () => {
     set({ isLoading: true });
@@ -230,6 +274,121 @@ export const useMatrimonyStore = create<MatrimonyStoreState>((set, get) => ({
       }
     } catch {
       // Clean fallback
+    }
+  },
+
+  fetchAdminMatchSuggestions: async (status?: string) => {
+    set({ isMatchmakingLoading: true });
+    try {
+      const url = status && status !== 'ALL'
+        ? `${API_BASE}/admin/matches?status=${status}`
+        : `${API_BASE}/admin/matches`;
+      const res = await axios.get(url, {
+        headers: getAuthHeaders(),
+        timeout: 5000,
+      });
+      if (Array.isArray(res.data)) {
+        set({ matchSuggestions: res.data, isMatchmakingLoading: false });
+        return;
+      }
+    } catch {
+      // Clean fallback
+    }
+    set({ isMatchmakingLoading: false });
+  },
+
+  fetchCuratedSuggestions: async () => {
+    set({ isMatchmakingLoading: true });
+    try {
+      const res = await axios.get(`${API_BASE}/matches/suggested`, {
+        headers: getAuthHeaders(),
+        timeout: 5000,
+      });
+      if (Array.isArray(res.data)) {
+        set({ curatedSuggestions: res.data, isMatchmakingLoading: false });
+        return;
+      }
+    } catch {
+      // Clean fallback
+    }
+    set({ isMatchmakingLoading: false });
+  },
+
+  createMatchSuggestion: async (userId: string, suggestedUserId: string, adminNote?: string) => {
+    set({ isMatchmakingLoading: true });
+    try {
+      const res = await axios.post(
+        `${API_BASE}/admin/matches/suggest`,
+        { userId, suggestedUserId, adminNote },
+        { headers: getAuthHeaders(), timeout: 6000 }
+      );
+      if (res.data) {
+        set((s) => ({
+          matchSuggestions: [res.data, ...s.matchSuggestions],
+          isMatchmakingLoading: false,
+        }));
+        get().addToast({
+          title: 'Match Suggestion Sent! 🕊️',
+          description: 'Both members have been introduced with your personal note.',
+          type: 'success',
+        });
+        return true;
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || 'Failed to submit match suggestion.';
+      get().addToast({
+        title: 'Error Creating Suggestion',
+        description: Array.isArray(msg) ? msg.join(', ') : msg,
+        type: 'error',
+      });
+      set({ isMatchmakingLoading: false });
+      return false;
+    }
+    set({ isMatchmakingLoading: false });
+    return false;
+  },
+
+  respondToMatchSuggestion: async (suggestionId: string, accepted: boolean) => {
+    set({ isMatchmakingLoading: true });
+    try {
+      await axios.post(
+        `${API_BASE}/matches/${suggestionId}/respond`,
+        { accepted },
+        { headers: getAuthHeaders(), timeout: 6000 }
+      );
+      set((s) => ({
+        curatedSuggestions: s.curatedSuggestions.filter((item) => item.id !== suggestionId),
+        matchSuggestions: s.matchSuggestions.map((item) =>
+          item.id === suggestionId
+            ? { ...item, status: accepted ? 'ACCEPTED' : 'REJECTED' }
+            : item
+        ),
+        isMatchmakingLoading: false,
+      }));
+
+      if (accepted) {
+        get().addToast({
+          title: 'Introduction Accepted! 💒',
+          description: 'You have accepted the matchmaker introduction. Both of you can now connect.',
+          type: 'success',
+        });
+      } else {
+        get().addToast({
+          title: 'Introduction Declined',
+          description: 'You have politely declined the match suggestion.',
+          type: 'info',
+        });
+      }
+      return true;
+    } catch (err: any) {
+      const msg = err.response?.data?.message || 'Failed to record your response.';
+      get().addToast({
+        title: 'Error Responding',
+        description: Array.isArray(msg) ? msg.join(', ') : msg,
+        type: 'error',
+      });
+      set({ isMatchmakingLoading: false });
+      return false;
     }
   },
 

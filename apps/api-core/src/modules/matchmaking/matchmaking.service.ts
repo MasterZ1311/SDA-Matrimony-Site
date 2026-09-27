@@ -130,47 +130,65 @@ export class MatchmakingService {
   }
 
   /**
-   * Returns all pending match suggestions for a specific authenticated member.
+   * Returns all pending match suggestions for a specific authenticated member (either as recipient or candidate).
    */
   async getSuggestedMatchesForUser(userId: string) {
-    return (this.prisma as any).matchSuggestion.findMany({
+    const candidateProfileSelect = {
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        gender: true,
+        dateOfBirth: true,
+        residenceCity: true,
+        residenceCountry: true,
+        maritalStatus: true,
+        bioSummary: true,
+        verificationStatus: true,
+        photos: {
+          where: { isPrimary: true },
+          select: { id: true, url: true, isApproved: true },
+        },
+      },
+    };
+
+    const suggestions = await (this.prisma as any).matchSuggestion.findMany({
       where: {
-        userId,
         status: MatchSuggestionStatus.PENDING,
+        OR: [{ userId }, { suggestedUserId: userId }],
       },
       orderBy: { createdAt: 'desc' },
       include: {
+        admin: {
+          select: { id: true, email: true },
+        },
+        user: {
+          select: {
+            id: true,
+            email: true,
+            role: true,
+            profile: candidateProfileSelect,
+          },
+        },
         suggestedUser: {
           select: {
             id: true,
             email: true,
             role: true,
-            profile: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                gender: true,
-                dateOfBirth: true,
-                residenceCity: true,
-                residenceCountry: true,
-                maritalStatus: true,
-                bioSummary: true,
-                verificationStatus: true,
-                photos: {
-                  where: { isPrimary: true },
-                  select: { id: true, url: true, isApproved: true },
-                },
-              },
-            },
+            profile: candidateProfileSelect,
           },
         },
       },
     });
+
+    return suggestions.map((s: any) => ({
+      ...s,
+      otherUser: s.userId === userId ? s.suggestedUser : s.user,
+    }));
   }
 
   /**
-   * Allows the recipient member to accept or reject an admin-suggested match.
+   * Allows either candidate member to accept or reject an admin-suggested match.
    */
   async respondToSuggestion(suggestionId: string, userId: string, accepted: boolean) {
     const suggestion = await (this.prisma as any).matchSuggestion.findUnique({
@@ -181,7 +199,7 @@ export class MatchmakingService {
       throw new NotFoundException('Match suggestion not found.');
     }
 
-    if (suggestion.userId !== userId) {
+    if (suggestion.userId !== userId && suggestion.suggestedUserId !== userId) {
       throw new ForbiddenException(
         'You are not authorized to respond to this match suggestion.',
       );
@@ -201,6 +219,9 @@ export class MatchmakingService {
       where: { id: suggestionId },
       data: { status: newStatus },
       include: {
+        user: {
+          include: { profile: true },
+        },
         suggestedUser: {
           include: { profile: true },
         },
