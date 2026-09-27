@@ -5,10 +5,17 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  NotificationsService,
+  NotificationType,
+} from '../notifications/notifications.service';
 
 @Injectable()
 export class MessagesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService,
+  ) {}
 
   async getConversations(userId: string) {
     const conversations = await this.prisma.conversation.findMany({
@@ -147,6 +154,18 @@ export class MessagesService {
       where: { id: conversationId },
       data: { updatedAt: new Date() },
     });
+
+    const senderName = message.sender?.profile
+      ? `${message.sender.profile.firstName || ''} ${message.sender.profile.lastName || ''}`.trim()
+      : 'Someone';
+
+    await this.notificationsService.createNotification(
+      otherUserId,
+      NotificationType.NEW_MESSAGE,
+      `${senderName || 'Someone'} sent you a message`,
+      `/messages?conversationId=${conversationId}`,
+      conversationId,
+    );
 
     return message;
   }

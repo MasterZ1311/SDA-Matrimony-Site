@@ -17,11 +17,70 @@ import {
   User,
   Bell,
 } from 'lucide-react';
+import { useRealtimeSocket } from '@/hooks/useRealtimeSocket';
+
+function formatRelativeTime(dateInput: string | Date | undefined): string {
+  if (!dateInput) return '';
+  const now = new Date();
+  const date = new Date(dateInput);
+  const diffSec = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (diffSec < 60) return 'Just now';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function getNotificationBadge(type: string) {
+  switch (type) {
+    case 'INTEREST_RECEIVED':
+      return {
+        icon: <Heart size={15} fill="currentColor" />,
+        bg: 'rgba(200, 155, 60, 0.12)',
+        color: 'var(--accent-gold)',
+      };
+    case 'MATCH_SUGGESTED':
+      return {
+        icon: <Sparkles size={15} />,
+        bg: 'rgba(16, 185, 129, 0.12)',
+        color: '#10B981',
+      };
+    case 'NEW_MESSAGE':
+      return {
+        icon: <MessageSquare size={15} />,
+        bg: 'rgba(59, 130, 246, 0.12)',
+        color: '#3B82F6',
+      };
+    default:
+      return {
+        icon: <Bell size={15} />,
+        bg: 'rgba(30, 58, 95, 0.1)',
+        color: 'var(--primary-800)',
+      };
+  }
+}
 
 export const Navbar: React.FC = () => {
   const pathname = usePathname();
   const { user, isAuthenticated, logout } = useAuthStore();
-  const { interests, conversations, notifications, fetchNotifications, curatedSuggestions } = useMatrimonyStore();
+  const {
+    interests,
+    conversations,
+    notificationsList,
+    unreadNotificationsCount,
+    fetchNotifications,
+    markAsRead,
+    markAllAsRead,
+    curatedSuggestions,
+  } = useMatrimonyStore();
+
+  useRealtimeSocket();
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -52,8 +111,6 @@ export const Navbar: React.FC = () => {
     (sum, c) => sum + (c.unreadCount || 0),
     0
   );
-
-  const totalAlerts = (notifications?.totalUnread || 0) + pendingReceivedInterests;
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
@@ -299,12 +356,12 @@ export const Navbar: React.FC = () => {
                     alignItems: 'center',
                     justifyContent: 'center',
                     cursor: 'pointer',
-                    color: totalAlerts > 0 ? 'var(--primary-800)' : 'var(--text-muted)',
+                    color: unreadNotificationsCount > 0 ? 'var(--primary-800)' : 'var(--text-muted)',
                     transition: 'all 0.2s ease',
                   }}
                 >
                   <Bell size={19} />
-                  {totalAlerts > 0 && (
+                  {unreadNotificationsCount > 0 && (
                     <span
                       style={{
                         position: 'absolute',
@@ -313,7 +370,7 @@ export const Navbar: React.FC = () => {
                         width: '18px',
                         height: '18px',
                         borderRadius: '50%',
-                        backgroundColor: 'var(--accent-gold)',
+                        backgroundColor: '#DC2626',
                         color: '#FFFFFF',
                         fontSize: '0.65rem',
                         fontWeight: 700,
@@ -323,7 +380,7 @@ export const Navbar: React.FC = () => {
                         boxShadow: '0 0 0 2px #FFF',
                       }}
                     >
-                      {totalAlerts > 9 ? '9+' : totalAlerts}
+                      {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
                     </span>
                   )}
                 </button>
@@ -334,7 +391,7 @@ export const Navbar: React.FC = () => {
                       position: 'absolute',
                       top: 'calc(100% + 10px)',
                       right: 0,
-                      width: '340px',
+                      width: '350px',
                       backgroundColor: '#FFFFFF',
                       borderRadius: 'var(--radius-lg)',
                       boxShadow: 'var(--shadow-lg)',
@@ -345,7 +402,7 @@ export const Navbar: React.FC = () => {
                   >
                     <div
                       style={{
-                        padding: '14px 16px',
+                        padding: '12px 16px',
                         borderBottom: '1px solid var(--border-subtle)',
                         display: 'flex',
                         alignItems: 'center',
@@ -356,79 +413,133 @@ export const Navbar: React.FC = () => {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <Bell size={16} color="var(--primary-800)" />
                         <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--primary-900)' }}>
-                          Matrimonial Alerts
+                          Notifications
                         </span>
+                        {unreadNotificationsCount > 0 && (
+                          <span
+                            style={{
+                              backgroundColor: 'var(--primary-800)',
+                              color: '#FFFFFF',
+                              fontSize: '0.7rem',
+                              fontWeight: 700,
+                              padding: '1px 6px',
+                              borderRadius: '10px',
+                            }}
+                          >
+                            {unreadNotificationsCount} new
+                          </span>
+                        )}
                       </div>
-                      {totalAlerts > 0 && (
-                        <span className="badge badge-gold" style={{ fontSize: '0.7rem' }}>
-                          {totalAlerts} New
-                        </span>
+                      {unreadNotificationsCount > 0 && (
+                        <button
+                          onClick={() => markAllAsRead()}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--primary-700)',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            padding: '4px 6px',
+                            borderRadius: '4px',
+                          }}
+                        >
+                          Mark all read
+                        </button>
                       )}
                     </div>
 
-                    <div style={{ maxHeight: '320px', overflowY: 'auto' }}>
-                      {notifications?.notifications && notifications.notifications.length > 0 ? (
-                        notifications.notifications.map((notif) => (
-                          <Link
-                            key={notif.id}
-                            href={notif.link}
-                            onClick={() => setNotificationsOpen(false)}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'flex-start',
-                              gap: '12px',
-                              padding: '12px 16px',
-                              borderBottom: '1px solid var(--border-subtle)',
-                              textDecoration: 'none',
-                              color: 'inherit',
-                              transition: 'background 0.2s ease',
-                            }}
-                          >
-                            <div
+                    <div style={{ maxHeight: '340px', overflowY: 'auto' }}>
+                      {notificationsList && notificationsList.length > 0 ? (
+                        notificationsList.map((notif) => {
+                          const badge = getNotificationBadge(notif.type);
+                          return (
+                            <Link
+                              key={notif.id}
+                              href={notif.link || '/'}
+                              onClick={() => {
+                                if (!notif.isRead) {
+                                  markAsRead(notif.id);
+                                }
+                                setNotificationsOpen(false);
+                              }}
                               style={{
-                                width: '32px',
-                                height: '32px',
-                                borderRadius: '50%',
-                                backgroundColor: notif.type === 'match' ? 'rgba(76, 175, 80, 0.12)' : 'rgba(200, 155, 60, 0.12)',
-                                color: notif.type === 'match' ? 'var(--success)' : 'var(--accent-gold)',
                                 display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                flexShrink: 0,
-                                marginTop: '2px',
+                                alignItems: 'flex-start',
+                                gap: '12px',
+                                padding: '12px 16px',
+                                borderBottom: '1px solid var(--border-subtle)',
+                                textDecoration: 'none',
+                                color: 'inherit',
+                                backgroundColor: notif.isRead ? '#FFFFFF' : 'rgba(238, 242, 255, 0.65)',
+                                transition: 'background 0.2s ease',
+                                position: 'relative',
                               }}
                             >
-                              {notif.type === 'match' ? <CheckCircle2 size={16} /> : <Heart size={16} />}
-                            </div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <p style={{ margin: 0, fontSize: '0.825rem', fontWeight: 600, color: 'var(--primary-900)' }}>
-                                {notif.title}
-                              </p>
-                              <p
+                              {!notif.isRead && (
+                                <span
+                                  style={{
+                                    position: 'absolute',
+                                    top: '16px',
+                                    left: '6px',
+                                    width: '6px',
+                                    height: '6px',
+                                    borderRadius: '50%',
+                                    backgroundColor: '#2563EB',
+                                  }}
+                                />
+                              )}
+                              <div
                                 style={{
-                                  margin: '2px 0 0',
-                                  fontSize: '0.775rem',
-                                  color: 'var(--text-secondary)',
-                                  whiteSpace: 'nowrap',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
+                                  width: '32px',
+                                  height: '32px',
+                                  borderRadius: '50%',
+                                  backgroundColor: badge.bg,
+                                  color: badge.color,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexShrink: 0,
+                                  marginTop: '2px',
                                 }}
                               >
-                                {notif.message}
-                              </p>
-                              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                                {new Date(notif.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                              </span>
-                            </div>
-                          </Link>
-                        ))
+                                {badge.icon}
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <p
+                                  style={{
+                                    margin: 0,
+                                    fontSize: '0.825rem',
+                                    fontWeight: notif.isRead ? 500 : 700,
+                                    color: notif.isRead ? 'var(--text-secondary)' : 'var(--primary-900)',
+                                    lineHeight: 1.35,
+                                  }}
+                                >
+                                  {notif.title}
+                                </p>
+                                <span
+                                  style={{
+                                    display: 'inline-block',
+                                    marginTop: '4px',
+                                    fontSize: '0.7rem',
+                                    color: 'var(--text-muted)',
+                                  }}
+                                >
+                                  {formatRelativeTime(notif.createdAt)}
+                                </span>
+                              </div>
+                            </Link>
+                          );
+                        })
                       ) : (
-                        <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                          <Heart size={24} style={{ margin: '0 auto 8px', opacity: 0.5 }} />
-                          <p style={{ margin: 0, fontSize: '0.825rem', fontWeight: 500 }}>
-                            No pending notifications
+                        <div style={{ padding: '28px 16px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                          <Bell size={24} style={{ margin: '0 auto 8px', opacity: 0.4 }} />
+                          <p style={{ margin: 0, fontSize: '0.825rem', fontWeight: 600 }}>
+                            No notifications yet
                           </p>
-                          <span style={{ fontSize: '0.75rem' }}>You are completely up to date!</span>
+                          <span style={{ fontSize: '0.75rem' }}>
+                            We&apos;ll notify you when someone connects or messages you.
+                          </span>
                         </div>
                       )}
                     </div>
@@ -437,17 +548,39 @@ export const Navbar: React.FC = () => {
                       style={{
                         padding: '10px 16px',
                         borderTop: '1px solid var(--border-subtle)',
-                        textAlign: 'center',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
                         backgroundColor: '#FFFFFF',
                       }}
                     >
                       <Link
                         href="/interests"
                         onClick={() => setNotificationsOpen(false)}
-                        style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary-700)', textDecoration: 'none' }}
+                        style={{
+                          fontSize: '0.775rem',
+                          fontWeight: 600,
+                          color: 'var(--primary-700)',
+                          textDecoration: 'none',
+                        }}
                       >
-                        View All Received Proposals &rarr;
+                        View Received Proposals &rarr;
                       </Link>
+                      {unreadNotificationsCount > 0 && (
+                        <button
+                          onClick={() => markAllAsRead()}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--text-muted)',
+                            fontSize: '0.75rem',
+                            cursor: 'pointer',
+                            padding: 0,
+                          }}
+                        >
+                          Clear all
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}
@@ -666,8 +799,8 @@ export const Navbar: React.FC = () => {
               <Bell size={20} color="var(--primary-700)" />
               Notifications & Alerts
             </div>
-            {totalAlerts > 0 && (
-              <span className="badge badge-gold">{totalAlerts} New</span>
+            {unreadNotificationsCount > 0 && (
+              <span className="badge badge-gold">{unreadNotificationsCount} New</span>
             )}
           </Link>
 
