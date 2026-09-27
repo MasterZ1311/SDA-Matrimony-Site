@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   MessageSquare,
   Compass,
+  Sparkles,
   LogOut,
   CheckCircle2,
   Menu,
@@ -20,7 +21,7 @@ import {
 export const Navbar: React.FC = () => {
   const pathname = usePathname();
   const { user, isAuthenticated, logout } = useAuthStore();
-  const { interests, conversations, notifications, fetchNotifications } = useMatrimonyStore();
+  const { interests, conversations, notifications, fetchNotifications, curatedSuggestions } = useMatrimonyStore();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -44,6 +45,8 @@ export const Navbar: React.FC = () => {
   const pendingReceivedInterests = interests.filter(
     (i) => i.type === 'RECEIVED' && i.status === 'PENDING'
   ).length;
+
+  const pendingCuratedMatches = curatedSuggestions.length;
 
   const totalUnreadMessages = conversations.reduce(
     (sum, c) => sum + (c.unreadCount || 0),
@@ -206,6 +209,38 @@ export const Navbar: React.FC = () => {
           </Link>
 
           <Link
+            href="/matches"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.925rem',
+              fontWeight: 600,
+              color: pathname === '/matches' ? 'var(--primary-700)' : 'var(--text-secondary)',
+              borderBottom: pathname === '/matches' ? '2px solid var(--primary-700)' : '2px solid transparent',
+              padding: '6px 0',
+              position: 'relative',
+            }}
+          >
+            <Sparkles size={18} />
+            Matches
+            {pendingCuratedMatches > 0 && (
+              <span
+                style={{
+                  backgroundColor: 'var(--accent-gold)',
+                  color: '#FFFFFF',
+                  fontSize: '0.7rem',
+                  fontWeight: 700,
+                  padding: '1px 6px',
+                  borderRadius: '10px',
+                }}
+              >
+                {pendingCuratedMatches}
+              </span>
+            )}
+          </Link>
+
+          <Link
             href="/admin/verifications"
             style={{
               display: 'flex',
@@ -213,14 +248,33 @@ export const Navbar: React.FC = () => {
               gap: '6px',
               fontSize: '0.925rem',
               fontWeight: 600,
-              color: pathname.startsWith('/admin') ? 'var(--primary-700)' : 'var(--text-secondary)',
-              borderBottom: pathname.startsWith('/admin') ? '2px solid var(--primary-700)' : '2px solid transparent',
+              color: pathname === '/admin/verifications' ? 'var(--primary-700)' : 'var(--text-secondary)',
+              borderBottom: pathname === '/admin/verifications' ? '2px solid var(--primary-700)' : '2px solid transparent',
               padding: '6px 0',
             }}
           >
             <ShieldCheck size={18} />
             Pastoral Portal
           </Link>
+
+          {user?.role === 'ADMIN' && (
+            <Link
+              href="/admin/matches"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '0.925rem',
+                fontWeight: 600,
+                color: pathname === '/admin/matches' ? 'var(--primary-700)' : 'var(--text-secondary)',
+                borderBottom: pathname === '/admin/matches' ? '2px solid var(--primary-700)' : '2px solid transparent',
+                padding: '6px 0',
+              }}
+            >
+              <Sparkles size={18} />
+              Matchmaker Desk
+            </Link>
+          )}
         </nav>
 
         {/* Desktop User Profile / CTA */}
@@ -570,6 +624,30 @@ export const Navbar: React.FC = () => {
           </Link>
 
           <Link
+            href="/matches"
+            onClick={closeMobileMenu}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '12px 16px',
+              borderRadius: 'var(--radius-md)',
+              backgroundColor: pathname === '/matches' ? 'var(--primary-50)' : 'transparent',
+              color: 'var(--primary-900)',
+              fontWeight: 600,
+              fontSize: '1rem',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <Sparkles size={20} color="var(--accent-gold)" />
+              Curated Matches
+            </div>
+            {pendingCuratedMatches > 0 && (
+              <span className="badge badge-gold">{pendingCuratedMatches} New</span>
+            )}
+          </Link>
+
+          <Link
             href="/interests"
             onClick={closeMobileMenu}
             style={{
@@ -578,7 +656,7 @@ export const Navbar: React.FC = () => {
               justifyContent: 'space-between',
               padding: '12px 16px',
               borderRadius: 'var(--radius-md)',
-              backgroundColor: 'transparent',
+              backgroundColor: pathname === '/interests' ? 'var(--primary-50)' : 'transparent',
               color: 'var(--primary-900)',
               fontWeight: 600,
               fontSize: '1rem',
@@ -602,7 +680,7 @@ export const Navbar: React.FC = () => {
               gap: '12px',
               padding: '12px 16px',
               borderRadius: 'var(--radius-md)',
-              backgroundColor: pathname.startsWith('/admin') ? 'var(--primary-50)' : 'transparent',
+              backgroundColor: pathname === '/admin/verifications' ? 'var(--primary-50)' : 'transparent',
               color: 'var(--primary-900)',
               fontWeight: 600,
               fontSize: '1rem',
@@ -611,6 +689,27 @@ export const Navbar: React.FC = () => {
             <ShieldCheck size={20} color="var(--primary-700)" />
             Pastoral Verification Portal
           </Link>
+
+          {user?.role === 'ADMIN' && (
+            <Link
+              href="/admin/matches"
+              onClick={closeMobileMenu}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '12px 16px',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: pathname === '/admin/matches' ? 'var(--primary-50)' : 'transparent',
+                color: 'var(--primary-900)',
+                fontWeight: 600,
+                fontSize: '1rem',
+              }}
+            >
+              <Sparkles size={20} color="var(--accent-gold)" />
+              Admin Matchmaker Desk
+            </Link>
+          )}
 
           <hr style={{ border: 'none', borderTop: '1px solid var(--border-subtle)', margin: '8px 0' }} />
 

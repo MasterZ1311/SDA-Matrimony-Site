@@ -6,9 +6,11 @@ import { useMatrimonyStore } from '@/stores/matrimonyStore';
 import { useAuthStore } from '@/stores/authStore';
 import { BiodataModal } from '@/components/common/BiodataModal';
 import { ReportModal } from '@/components/common/ReportModal';
+import { SuggestMatchModal } from '@/components/admin/SuggestMatchModal';
 import {
   Heart,
   FileDown,
+  Sparkles,
   CheckCircle2,
   ShieldCheck,
   ShieldAlert,
@@ -23,7 +25,6 @@ import {
   AlertCircle,
   MessageSquare,
   Star,
-  Sparkles,
   MessageCircle,
 } from 'lucide-react';
 
@@ -59,6 +60,7 @@ export default function ProfileDetailPage({ params }: { params: { id: string } }
   const [showBiodataModal, setShowBiodataModal] = useState(false);
   const [customMsgModal, setCustomMsgModal] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [showSuggestModal, setShowSuggestModal] = useState(false);
   const [introText, setIntroText] = useState('');
 
   useEffect(() => {
@@ -275,6 +277,23 @@ export default function ProfileDetailPage({ params }: { params: { id: string } }
                 >
                   <FileDown size={16} /> View & Print Biodata
                 </button>
+
+                {/* Admin-only Matchmaker Action */}
+                {user?.role === 'ADMIN' && !isMe && (
+                  <button
+                    type="button"
+                    onClick={() => setShowSuggestModal(true)}
+                    className="btn btn-primary"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      backgroundColor: 'var(--primary-800)',
+                    }}
+                  >
+                    <Sparkles size={16} color="var(--accent-gold)" /> Suggest Match
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -609,13 +628,20 @@ export default function ProfileDetailPage({ params }: { params: { id: string } }
       />
 
       {/* Confidential Pastoral Safety & Report Modal */}
-      {reportModalOpen && (
+      {reportModalOpen && candidate && (
         <ReportModal
           candidateId={candidate.id}
           candidateName={candidate.name}
           onClose={() => setReportModalOpen(false)}
         />
       )}
+
+      {/* Admin Suggest Match Modal */}
+      <SuggestMatchModal
+        targetCandidate={candidate}
+        isOpen={showSuggestModal}
+        onClose={() => setShowSuggestModal(false)}
+      />
     </div>
   );
 }
