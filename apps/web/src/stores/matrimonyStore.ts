@@ -165,6 +165,17 @@ export interface ToastMessage {
   type: 'success' | 'info' | 'warning' | 'error';
 }
 
+export interface NotificationItem {
+  id: string;
+  userId: string;
+  type: 'INTEREST_RECEIVED' | 'MATCH_SUGGESTED' | 'NEW_MESSAGE';
+  title: string;
+  link: string;
+  relatedId?: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
 export interface MatrimonyStoreState {
   candidates: CandidateProfile[];
   interests: InterestItem[];
@@ -174,6 +185,8 @@ export interface MatrimonyStoreState {
   toasts: ToastMessage[];
   isLoading: boolean;
   shortlist: string[];
+  notificationsList: NotificationItem[];
+  unreadNotificationsCount: number;
   notifications: {
     totalUnread: number;
     pendingCount: number;
@@ -204,6 +217,11 @@ export interface MatrimonyStoreState {
   blockCandidate: (candidateId: string) => Promise<boolean>;
   unblockCandidate: (candidateId: string) => Promise<boolean>;
   fetchNotifications: () => Promise<void>;
+  fetchUnreadCount: () => Promise<void>;
+  markAsRead: (id: string) => Promise<void>;
+  markAllAsRead: () => Promise<void>;
+  addRealtimeNotification: (notification: NotificationItem) => void;
+  setRealtimeUnreadCount: (count: number) => void;
   fetchAiIcebreakers: (candidateId: string) => Promise<string[]>;
   fetchAdminMatchSuggestions: (status?: string) => Promise<void>;
   fetchCuratedSuggestions: () => Promise<void>;
@@ -242,6 +260,8 @@ export const useMatrimonyStore = create<MatrimonyStoreState>((set, get) => ({
   toasts: [],
   isLoading: false,
   shortlist: [],
+  notificationsList: [],
+  unreadNotificationsCount: 0,
   notifications: { totalUnread: 0, pendingCount: 0, matchCount: 0, notifications: [] },
   matchSuggestions: [],
   curatedSuggestions: [],
@@ -778,16 +798,97 @@ export const useMatrimonyStore = create<MatrimonyStoreState>((set, get) => ({
 
   fetchNotifications: async () => {
     try {
-      const res = await axios.get(`${API_BASE}/interests/notifications`, {
+      const res = await axios.get(`${API_BASE}/notifications`, {
         headers: getAuthHeaders(),
-        timeout: 4000,
+        timeout: 5000,
       });
-      if (res.data) {
-        set({ notifications: res.data });
+      if (Array.isArray(res.data)) {
+        const list: NotificationItem[] = res.data;
+        const unreadCount = list.filter((n) => !n.isRead).length;
+        set({
+          notificationsList: list,
+          unreadNotificationsCount: unreadCount,
+        });
       }
     } catch {
       // Fallback
     }
+  },
+
+  fetchUnreadCount: async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/notifications/unread-count`, {
+        headers: getAuthHeaders(),
+        timeout: 4000,
+      });
+      if (typeof res.data?.count === 'number') {
+        set({ unreadNotificationsCount: res.data.count });
+      }
+    } catch {
+      // Fallback
+    }
+  },
+
+  markAsRead: async (id: string) => {
+    set((s) => ({
+      notificationsList: s.notificationsList.map((n) =>
+        n.id === id ? { ...n, isRead: true } : n
+      ),
+      unreadNotificationsCount: Math.max(0, s.unreadNotificationsCount - 1),
+    }));
+
+    try {
+      await axios.post(
+        `${API_BASE}/notifications/${id}/read`,
+        {},
+        { headers: getAuthHeaders(), timeout: 4000 }
+      );
+    } catch {
+      // Ignore
+    }
+  },
+
+  markAllAsRead: async () => {
+    set((s) => ({
+      notificationsList: s.notificationsList.map((n) => ({ ...n, isRead: true })),
+      unreadNotificationsCount: 0,
+    }));
+
+    try {
+      await axios.post(
+        `${API_BASE}/notifications/read-all`,
+        {},
+        { headers: getAuthHeaders(), timeout: 4000 }
+      );
+      get().addToast({
+        title: 'All notifications marked as read',
+        type: 'info',
+      });
+    } catch {
+      // Ignore
+    }
+  },
+
+  addRealtimeNotification: (notification: NotificationItem) => {
+    set((s) => {
+      if (s.notificationsList.some((n) => n.id === notification.id)) {
+        return s;
+      }
+      return {
+        notificationsList: [notification, ...s.notificationsList],
+        unreadNotificationsCount: s.unreadNotificationsCount + 1,
+      };
+    });
+
+    get().addToast({
+      title: 'New Notification 🔔',
+      description: notification.title,
+      type: 'info',
+    });
+  },
+
+  setRealtimeUnreadCount: (count: number) => {
+    set({ unreadNotificationsCount: count });
   },
 
   fetchAiIcebreakers: async (candidateId: string) => {

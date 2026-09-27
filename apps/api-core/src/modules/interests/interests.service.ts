@@ -7,10 +7,14 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { InterestStatus } from '@prisma/client';
+import { NotificationsService, NotificationType } from '../notifications/notifications.service';
 
 @Injectable()
 export class InterestsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   async expressInterest(senderId: string, receiverId: string, introMessage?: string) {
     if (senderId === receiverId) {
@@ -92,6 +96,21 @@ export class InterestsService {
         },
       },
     });
+
+    const senderProfile = interest.sender?.profile;
+    const senderName = senderProfile
+      ? `${senderProfile.firstName} ${senderProfile.lastName}`.trim()
+      : 'A believer';
+
+    this.notificationsService
+      .createNotification(
+        receiverId,
+        NotificationType.INTEREST_RECEIVED,
+        `${senderName} sent you an expression of interest`,
+        '/interests',
+        interest.id,
+      )
+      .catch(() => {});
 
     return {
       message: 'Expression of interest sent successfully.',

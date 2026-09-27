@@ -6,6 +6,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService, NotificationType } from '../notifications/notifications.service';
 
 export enum MatchSuggestionStatus {
   PENDING = 'PENDING',
@@ -15,7 +16,10 @@ export enum MatchSuggestionStatus {
 
 @Injectable()
 export class MatchmakingService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   /**
    * Creates an admin-assisted match suggestion between two candidates.
@@ -64,7 +68,7 @@ export class MatchmakingService {
       );
     }
 
-    return (this.prisma as any).matchSuggestion.create({
+    const suggestion = await (this.prisma as any).matchSuggestion.create({
       data: {
         adminId,
         userId: data.userId,
@@ -84,6 +88,29 @@ export class MatchmakingService {
         },
       },
     });
+
+    // Notify both members about the curated match recommendation
+    this.notificationsService
+      .createNotification(
+        data.userId,
+        NotificationType.MATCH_SUGGESTED,
+        'A church leader suggested a curated match for you',
+        '/matches',
+        suggestion.id,
+      )
+      .catch(() => {});
+
+    this.notificationsService
+      .createNotification(
+        data.suggestedUserId,
+        NotificationType.MATCH_SUGGESTED,
+        'A church leader suggested a curated match for you',
+        '/matches',
+        suggestion.id,
+      )
+      .catch(() => {});
+
+    return suggestion;
   }
 
   /**

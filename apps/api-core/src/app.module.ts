@@ -13,6 +13,7 @@ import { MailModule } from './modules/mail/mail.module';
 import { FirebaseModule } from './common/firebase/firebase.module';
 import { MatchmakingModule } from './modules/matchmaking/matchmaking.module';
 import { PromptsModule } from './modules/prompts/prompts.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { PromptsModule } from './modules/prompts/prompts.module';
     MailModule,
     MatchmakingModule,
     PromptsModule,
+    NotificationsModule,
   ],
 })
 export class AppModule {}
